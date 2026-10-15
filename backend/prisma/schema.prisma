@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  super_admin
+  admin
+  user
+}
+
+enum UserStatus {
+  active
+  suspended
+  banned
+}
+
+enum SharingChannelStatus {
+  open
+  closed
+}
+
+enum ConfirmationStatus {
+  pending
+  confirmed
+  missed
+}
+
+enum CycleStatus {
+  open
+  closed
+}
+
+model User {
+  id              String     @id @default(uuid())
+  name            String
+  surname         String
+  phoneNumber     String     @unique @map("phone_number")
+  motivation      String
+  role            Role       @default(user)
+  status          UserStatus @default(active)
+  reviewedByAdmin Boolean    @default(false) @map("reviewed_by_admin")
+  lastConfirmedAt DateTime?  @map("last_confirmed_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  devices               UserDevice[]
+  otpCodes              OtpCode[]
+  refreshTokens         RefreshToken[]
+  mainChannelPosts      MainChannelPost[]
+  sharingChannelSession SharingChannelMember[]
+  sharingChannelPosts   SharingChannelPost[]
+  confirmationRequests  ConfirmationRequest[]
+  openedSharingChannels SharingChannel[]
+  openedCycles          RegistrationCycle[]
+
+  @@map("users")
+}
+
+model UserDevice {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  fcmToken  String   @unique @map("fcm_token")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_devices")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  phone     String
+  code      String
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otp_codes")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model MainChannelPost {
+  id          String    @id @default(uuid())
+  authorId    String?   @map("author_id")
+  content     String
+  mediaUrl    String?   @map("media_url")
+  scheduledAt DateTime? @map("scheduled_at")
+  publishedAt DateTime? @map("published_at")
+  isDraft     Boolean   @default(false) @map("is_draft")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@map("main_channel_posts")
+}
+
+model SharingChannel {
+  id                String               @id @default(uuid())
+  status            SharingChannelStatus @default(closed)
+  openedBy          String?              @map("opened_by")
+  openedAt          DateTime?            @map("opened_at")
+  scheduledClosedAt DateTime?            @map("scheduled_closed_at")
+  closedAt          DateTime?            @map("closed_at")
+
+  opener  User?                  @relation(fields: [openedBy], references: [id])
+  members SharingChannelMember[]
+  posts   SharingChannelPost[]
+
+  @@map("sharing_channel")
+}
+
+model SharingChannelMember {
+  id               String   @id @default(uuid())
+  sharingChannelId String   @map("sharing_channel_id")
+  userId           String   @map("user_id")
+  joinedAt         DateTime @default(now()) @map("joined_at")
+
+  sharingChannel SharingChannel @relation(fields: [sharingChannelId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sharingChannelId, userId])
+  @@map("sharing_channel_members")
+}
+
+model SharingChannelPost {
+  id               String   @id @default(uuid())
+  sharingChannelId String   @map("sharing_channel_id")
+  authorId         String   @map("author_id")
+  content          String
+  mediaUrl         String?  @map("media_url")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  sharingChannel SharingChannel @relation(fields: [sharingChannelId], references: [id], onDelete: Cascade)
+  author         User           @relation(fields: [authorId], references: [id])
+
+  @@map("sharing_channel_posts")
+}
+
+model ConfirmationRequest {
+  id          String             @id @default(uuid())
+  userId      String             @map("user_id")
+  dueAt       DateTime           @map("due_at")
+  confirmedAt DateTime?          @map("confirmed_at")
+  status      ConfirmationStatus @default(pending)
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("confirmation_requests")
+}
+
+model RegistrationCycle {
+  id       String      @id @default(uuid())
+  status   CycleStatus @default(closed)
+  openedBy String?     @map("opened_by")
+  openedAt DateTime?   @map("opened_at")
+  closedAt DateTime?   @map("closed_at")
+
+  opener User? @relation(fields: [openedBy], references: [id])
+
+  @@map("registration_cycles")
+}
+
+model BannedPhone {
+  id          String   @id @default(uuid())
+  phoneNumber String   @unique @map("phone_number")
+  permanent   Boolean  @default(false)
+  bannedAt    DateTime @default(now()) @map("banned_at")
+
+  @@map("banned_phones")
+}
