@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -12,8 +13,11 @@ class PushService {
 
   PushService(this._api);
 
+  // No push on web, nor when Firebase has not been configured.
+  bool get _available => !kIsWeb && Firebase.apps.isNotEmpty;
+
   Future<void> init() async {
-    if (kIsWeb) return; // push notifications not supported on web
+    if (!_available) return;
 
     await _localNotifications.initialize(
       const InitializationSettings(
@@ -56,7 +60,7 @@ class PushService {
   }
 
   Future<void> unregisterToken() async {
-    if (kIsWeb) return;
+    if (!_available) return;
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) {
       await _api.delete('/api/auth/devices', data: {'fcmToken': token});

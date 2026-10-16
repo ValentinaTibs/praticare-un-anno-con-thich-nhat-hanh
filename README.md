@@ -113,35 +113,21 @@ Il server risponde su `http://localhost:3000` e si riavvia a ogni modifica del c
 
 Tutti i comandi si lanciano dalla cartella `mobile/`.
 
-### 1. Generare le cartelle delle piattaforme
+L'app esce solo per Android e iOS. L'identificativo, uguale sulle due piattaforme, è `it.laviadellatrasformazione.app` e non si potrà cambiare dopo la pubblicazione negli store.
 
-Il repository contiene solo il codice Dart. Le cartelle `android/`, `ios/` e `web/` vanno generate la prima volta:
+### 1. Configurazione Firebase
 
-```bash
-cd mobile
-flutter create --platforms=android,ios,web --org it.laviadellatrasformazione .
-```
+Firebase serve per le notifiche push e, più avanti, per l'accesso con codice SMS. Finché il progetto Firebase non esiste, l'app si avvia lo stesso, senza notifiche push.
 
-L'identificativo dell'app non è ancora definitivo.
+Quando il progetto sarà pronto, la configurazione si genera con `flutterfire configure` e si salva nel repository. Quei file contengono chiavi pubbliche del client, non segreti.
 
-### 2. Aggiungere la configurazione Firebase
-
-Su Android e iOS l'app si collega a Firebase all'avvio. Dalla console Firebase scarica i file di configurazione delle app registrate e copiali qui:
-
-| Piattaforma | File | Destinazione |
-|---|---|---|
-| Android | `google-services.json` | `mobile/android/app/` |
-| iOS | `GoogleService-Info.plist` | `mobile/ios/Runner/` |
-
-Su web l'app non usa Firebase, quindi questo passaggio non serve.
-
-### 3. Installare le dipendenze
+### 2. Installare le dipendenze
 
 ```bash
 flutter pub get
 ```
 
-### 4. Avviare l'app
+### 3. Avviare l'app
 
 L'indirizzo del backend si passa con `API_URL`. Il valore dipende da dove gira l'app:
 
@@ -149,9 +135,8 @@ L'indirizzo del backend si passa con `API_URL`. Il valore dipende da dove gira l
 # Emulatore Android: 10.0.2.2 indica il computer che ospita l'emulatore
 flutter run --dart-define=API_URL=http://10.0.2.2:3000
 
-# Simulatore iOS o browser
+# Simulatore iOS
 flutter run --dart-define=API_URL=http://localhost:3000
-flutter run -d chrome --dart-define=API_URL=http://localhost:3000
 
 # Telefono reale sulla stessa rete Wi-Fi: usa l'indirizzo IP del computer
 flutter run --dart-define=API_URL=http://192.168.1.10:3000

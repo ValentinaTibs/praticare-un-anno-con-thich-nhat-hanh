@@ -7,7 +7,12 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
-    await Firebase.initializeApp();
+    try {
+      await Firebase.initializeApp();
+    } catch (e) {
+      // Until the Firebase project exists (issue #5) the app runs without push notifications.
+      debugPrint('Firebase not configured, push notifications disabled: $e');
+    }
   }
   runApp(const ProviderScope(child: App()));
 }
