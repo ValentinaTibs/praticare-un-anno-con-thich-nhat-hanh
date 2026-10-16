@@ -6,6 +6,7 @@ import { verifyFirebaseToken } from '../services/otp.service.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { randomUUID } from 'crypto';
 import { addDays } from '../utils/date.js';
+import { findOpenCycle } from '../services/cycle.service.js';
 
 const firebaseBody = z.object({ idToken: z.string().min(1) });
 const registerBody = z.object({
@@ -66,7 +67,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     if (!user) {
       if (banned && !banned.permanent) {
-        const cycle = await prisma.registrationCycle.findFirst({ where: { status: 'open' } });
+        const cycle = await findOpenCycle();
         if (!cycle) {
           return reply.status(403).send({ message: 'Registrations are currently closed.' });
         }
@@ -104,10 +105,7 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
-    const cycle = await prisma.registrationCycle.findFirst({
-      where: { status: 'open' },
-      include: { group: true },
-    });
+    const cycle = await findOpenCycle();
     if (!cycle) {
       return reply.status(403).send({ message: 'Registrations are currently closed.' });
     }

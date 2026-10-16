@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import fjwt from '@fastify/jwt';
 import { Prisma } from '@prisma/client';
+import { ZodError } from 'zod';
 import { env } from './config/env.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
@@ -39,7 +40,8 @@ export async function buildApp() {
   app.setErrorHandler((error, _request, reply) => {
     // P2025: the record targeted by findUniqueOrThrow/update/delete does not exist
     const notFound = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025';
-    const statusCode = notFound ? 404 : error.statusCode ?? 500;
+    const invalidInput = error instanceof ZodError;
+    const statusCode = notFound ? 404 : invalidInput ? 400 : error.statusCode ?? 500;
     app.log.error(error);
     reply.status(statusCode).send({
       error: error.name,

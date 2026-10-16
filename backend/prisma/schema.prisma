@@ -174,11 +174,12 @@ model ConfirmationRequest {
 }
 
 model RegistrationCycle {
-  id       String      @id @default(uuid())
-  status   CycleStatus @default(closed)
-  openedBy String?     @map("opened_by")
-  openedAt DateTime?   @map("opened_at")
-  closedAt DateTime?   @map("closed_at")
+  id                String      @id @default(uuid())
+  status            CycleStatus @default(closed)
+  openedBy          String?     @map("opened_by")
+  openedAt          DateTime?   @map("opened_at")
+  scheduledClosedAt DateTime?   @map("scheduled_closed_at")
+  closedAt          DateTime?   @map("closed_at")
 
   opener User?  @relation(fields: [openedBy], references: [id])
   group  Group?

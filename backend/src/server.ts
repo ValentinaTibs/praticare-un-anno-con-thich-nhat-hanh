@@ -4,6 +4,7 @@ import { prisma } from './config/prisma.js';
 import { startScheduledPostsJob } from './jobs/scheduled-posts.job.js';
 import { startConfirmationCheckJob } from './jobs/confirmation-check.job.js';
 import { startSharingChannelJob } from './jobs/sharing-channel.job.js';
+import { startRegistrationCycleJob } from './jobs/registration-cycle.job.js';
 
 async function main() {
   const app = await buildApp();
@@ -11,6 +12,7 @@ async function main() {
   startScheduledPostsJob();
   startConfirmationCheckJob();
   startSharingChannelJob();
+  startRegistrationCycleJob();
 
   await app.listen({ port: env.PORT, host: env.HOST });
   app.log.info(`Server running on http://${env.HOST}:${env.PORT}`);

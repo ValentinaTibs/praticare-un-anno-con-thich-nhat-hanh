@@ -46,10 +46,10 @@ export async function loginAs(app: Awaited<ReturnType<typeof createTestApp>>, us
   return { authorization: `Bearer ${res.json().accessToken}` };
 }
 
-export async function givenOpenCycle() {
+export async function givenOpenCycle(scheduledClosedAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
   const openedAt = new Date();
   return prisma.registrationCycle.create({
-    data: { status: 'open', openedAt, group: { create: { startedAt: openedAt } } },
+    data: { status: 'open', openedAt, scheduledClosedAt, group: { create: { startedAt: openedAt } } },
     include: { group: true },
   });
 }

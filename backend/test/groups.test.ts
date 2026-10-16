@@ -12,8 +12,9 @@ import {
 type App = Awaited<ReturnType<typeof createTestApp>>;
 type Headers = { authorization: string };
 
+const nextWeek = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 const openCycle = (app: App, headers: Headers) =>
-  app.inject({ method: 'POST', url: '/api/cycles/open', headers });
+  app.inject({ method: 'POST', url: '/api/cycles/open', headers, payload: { scheduledClosedAt: nextWeek() } });
 const closeCycle = (app: App, headers: Headers) =>
   app.inject({ method: 'POST', url: '/api/cycles/close', headers });
 
