@@ -105,8 +105,9 @@ Il server risponde su `http://localhost:3000` e si riavvia a ogni modifica del c
 | Comando | A cosa serve |
 |---|---|
 | `npm run db:studio` | Apre Prisma Studio per consultare il database dal browser |
-| `npm test` | Esegue i test. Richiede le variabili d'ambiente |
-| `npm run build` | Compila per la produzione nella cartella `dist/` |
+| `npm test` | Esegue i test su un database PostgreSQL temporaneo, senza bisogno del file `.env` |
+| `npm run typecheck` | Controlla i tipi di codice, test, script di installazione e configurazione dei test |
+| `npm run build` | Controlla i tipi e compila per la produzione nella cartella `dist/` |
 
 ## App mobile
 

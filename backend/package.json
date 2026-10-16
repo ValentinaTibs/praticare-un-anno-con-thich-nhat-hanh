@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npm run typecheck && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
     "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",

@@ -31,11 +31,6 @@ export async function buildApp() {
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
   await app.register(fjwt, { secret: env.JWT_SECRET });
 
-  app.addHook('onRequest', async (request) => {
-    // make verify available on request
-    (request as any).jwtVerify = request.jwtVerify.bind(request);
-  });
-
   // Registered before the routes: Fastify plugins capture the error handler at registration time.
   app.setErrorHandler((error, _request, reply) => {
     // P2025: the record targeted by findUniqueOrThrow/update/delete does not exist

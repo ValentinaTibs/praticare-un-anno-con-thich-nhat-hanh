@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { addDays } from '../utils/date.js';
-import { pushToUser, pushToTokens } from './push.service.js';
+import { pushToUser } from './push.service.js';
 import { UserStatus } from '@prisma/client';
 
 export async function issueConfirmationRequests() {

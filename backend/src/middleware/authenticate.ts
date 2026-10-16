@@ -6,25 +6,26 @@ import { UserStatus } from '@prisma/client';
 export interface JwtPayload {
   sub: string;
   role: string;
-  iat: number;
-  exp: number;
 }
 
-declare module 'fastify' {
-  interface FastifyRequest {
-    user: {
-      id: string;
-      role: string;
-      status: UserStatus;
-      groupId: string | null;
-    };
+export interface AuthUser {
+  id: string;
+  role: string;
+  status: UserStatus;
+  groupId: string | null;
+}
+
+// @fastify/jwt owns the type of request.user: declare it here instead of on FastifyRequest.
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    payload: JwtPayload;
+    user: AuthUser;
   }
 }
 
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
   try {
-    await request.jwtVerify();
-    const payload = request.user as unknown as JwtPayload;
+    const payload = await request.jwtVerify<JwtPayload>();
 
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.sub },
