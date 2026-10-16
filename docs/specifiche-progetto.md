@@ -1,7 +1,7 @@
 # Community App — Specifiche di progetto
 
-> Stato: **bozza quasi completa**. Le questioni ancora da chiarire sono raccolte nella sezione 14, Punti aperti.
-> Ultimo aggiornamento: 2026-10-15
+> Stato: **completa per la prima release**. Le questioni ancora da chiarire sono raccolte nella sezione 14, Punti aperti.
+> Ultimo aggiornamento: 2026-10-16
 
 ## 1. Visione e obiettivi
 - L'app supporta un percorso di pratica della community **"La via della trasformazione"**. Il nome del percorso potrebbe cambiare.
@@ -18,15 +18,16 @@
 - Admin e Super Admin usano anche l'app mobile come partecipanti: leggono il Canale Principale ed entrano nel cerchio.
 - Tutti accedono con il **codice SMS**, sia all'app sia al pannello web. Il pannello è riservato agli utenti con ruolo admin o Super Admin.
 - Un utente diventa admin quando il Super Admin lo promuove. Non servono account separati.
-- Esiste **un solo Super Admin**, creato a mano durante l'installazione. L'account è legato a un **numero di telefono dell'associazione**. Chi ha quel telefono riceve il codice SMS e può accedere come Super Admin.
+- Esiste **un solo Super Admin**, creato a mano durante l'installazione. L'account è legato a un **numero di telefono del progetto**. Chi ha quel telefono riceve il codice SMS e può accedere come Super Admin.
 
 ## 3. Architettura tecnica
 - **App mobile:** Flutter
 - **Backend:** Node.js + TypeScript, Fastify v4, Zod per la validazione
 - **Database:** PostgreSQL tramite Prisma
-- **Autenticazione:** OTP via SMS (Twilio Verify) + JWT (access 15 min, refresh 30 giorni)
-- **Notifiche push:** Firebase Cloud Messaging, più dispositivi per utente
-- **Tempo reale:** Socket.IO autenticato con JWT
+- **Autenticazione:** codice SMS tramite Firebase Phone Authentication. Il backend verifica il token Firebase ed emette i propri JWT (access 15 min, refresh 30 giorni)
+- **Notifiche push e tempo reale:** Firebase Cloud Messaging, più dispositivi per utente
+- **Email:** servizio di invio da scegliere, necessario per gli avvisi alla lista d'attesa
+- **Pannello admin:** Flutter Web
 - **Job pianificati:** node-cron
 
 ## 4. Registrazione e accesso
@@ -110,6 +111,8 @@ ATTIVO o SOSPESO ──(rimozione admin / cancellazione utente)──► account
 ## 8. Canale Principale
 - Canale di comunicazione degli admin verso un gruppo. **Ogni gruppo ha il proprio** Canale Principale.
 - Gli admin preparano una **sequenza unica di post programmati**, ad esempio il percorso di un anno. Ogni gruppo riceve la stessa sequenza a partire dalla propria data di inizio.
+- Ogni post della sequenza si programma per **giorno dall'inizio del gruppo**, ad esempio "giorno 15".
+- Nella prima release tutti i gruppi ricevono solo la sequenza. Non si pubblicano contenuti per un solo gruppo.
 - I post possono essere bozze, pubblicati subito o programmati.
 - Gli admin possono **modificare e cancellare** anche i post già pubblicati.
 - Se un admin viene rimosso, i suoi post pubblicati restano senza autore. Quelli programmati tornano bozze finché un altro admin non li recupera.
@@ -151,6 +154,7 @@ Eventi già emersi da considerare:
 - Alla registrazione l'utente deve **accettare un'informativa privacy**.
 - L'informativa è pubblicata su una **pagina web** del sito laviadellatrasformazione.it. L'app mostra il link durante la registrazione.
 - Il testo è scritto e aggiornato dal **Super Admin direttamente sul sito**. Il pannello web non gestisce l'informativa.
+- Il progetto è un **gruppo informale**, non un ente. Il **titolare del trattamento** è quindi una persona fisica del gruppo, indicata nell'informativa con i suoi contatti.
 - L'utente può **cancellare autonomamente** il proprio account dall'app.
 - Alla cancellazione **tutti i dati dell'utente vengono eliminati subito**.
 - Dopo la cancellazione l'utente può registrarsi di nuovo al **ciclo successivo**, come avviene per la rimozione da parte di un admin. Per applicare questa regola il numero di telefono resta nell'elenco dei numeri bloccati fino all'apertura del ciclo successivo.
@@ -175,8 +179,8 @@ Eventi già emersi da considerare:
 - **Lingua:** solo italiano, in tutta l'app e nelle notifiche.
 - **Carico:** circa 100 utenti, 3-4 admin.
 - **Hosting e budget:** non ancora scelti. La scelta spetta al team.
-- **Pubblicazione negli store:** gli account sviluppatore per App Store e Google Play vanno aperti a nome dell'**associazione**. Non esistono ancora.
-- **Test prima del rilascio:** l'app viene provata da **3 tester** prima della pubblicazione, tramite TestFlight per iOS e il test interno di Google Play per Android.
+- **Pubblicazione negli store:** il progetto è un gruppo informale, quindi gli account sviluppatore per App Store e Google Play sono **account personali di un referente**, registrati con la **mail di progetto**. Su App Store come venditore compare il nome e cognome del referente. Gli account non esistono ancora. Se in futuro nascerà un ente, Apple e Google permettono di trasferire l'app.
+- **Test prima del rilascio:** su iOS l'app viene provata da almeno **3 tester** tramite TestFlight. Su Android Google impone agli account personali nuovi un **test chiuso con almeno 12 tester iscritti per 14 giorni consecutivi** prima di poter pubblicare.
 
 ## 13. Release successive
 Funzionalità escluse dalla prima release e già decise per il futuro.
@@ -184,6 +188,7 @@ Funzionalità escluse dalla prima release e già decise per il futuro.
 | Area | Funzionalità | Riferimento |
 |---|---|---|
 | Canale Principale | Reazioni ai post con un set ristretto di emoticon | Sezione 8 |
+| Canale Principale | Contenuti extra fuori sequenza, inviati a un solo gruppo | Sezione 8 |
 | Canale di Condivisione | Cadenza del cerchio configurabile dagli admin, oltre a quella settimanale | Sezione 9 |
 | Canale di Condivisione | Programmazione del cerchio diversa per ogni gruppo | Sezione 9 |
 | Canale di Condivisione | Rimozione automatica del post di annuncio dopo la chiusura del cerchio | Sezione 9 |
@@ -194,15 +199,17 @@ Funzionalità escluse dalla prima release e già decise per il futuro.
 ### Possono slittare se i tempi stringono
 Fanno parte della prima release, ma possono essere rimandate per rispettare la data del 26 dicembre.
 
-- **Cancellazione autonoma dell'account.** Se slitta, le richieste di cancellazione arrivano all'email di contatto e un admin rimuove l'account. Questo garantisce comunque il diritto alla cancellazione previsto dal GDPR.
-- **Modifica dei messaggi per sospesi e bannati.** Se slitta, i testi restano fissi nell'app.
+- **Modifica dei testi per sospesi, bannati e registrazione a ciclo chiuso.** Se slitta, i testi restano fissi.
+- **Revoca del ban dal pannello.** Se slitta, la revoca si fa a mano sul database su richiesta del Super Admin.
+
+La **cancellazione autonoma dell'account non può slittare**. Apple chiede che le app con registrazione permettano di cancellare l'account dall'interno dell'app, e Google Play ha un requisito simile. Senza questa funzione l'app rischia di essere rifiutata dagli store.
 
 ## 14. Punti aperti
 - Poteri speciali del Super Admin oltre alla gestione di cicli e ruoli: rimandato.
 - Hosting e budget.
-- Creazione degli account sviluppatore negli store. Per un'associazione Apple richiede il numero D-U-N-S e la verifica dell'organizzazione. Insieme alla revisione dell'app possono servire diverse settimane.
+- **Referente del progetto:** la persona che intesta gli account store e fa da titolare del trattamento dei dati. Da scegliere.
+- Creazione degli account sviluppatore negli store. Con account personali non serve il numero D-U-N-S, ma su Android il test chiuso di 14 giorni deve partire entro il 20 novembre.
 - **Fine di un gruppo.** Quando finisce un gruppo e cosa succede ai suoi membri: decisione rimandata.
-- **Sequenza dei post.** Come si esprime la programmazione: per giorno dall'inizio del gruppo, ad esempio "giorno 15", o per settimana? Gli admin possono anche pubblicare post fuori sequenza per un solo gruppo?
 - **Nome del percorso.** Il nome potrebbe cambiare, quindi il documento non lo fissa.
 
 ## 15. Differenze tra specifiche e codice attuale
@@ -220,14 +227,15 @@ Fanno parte della prima release, ma possono essere rimandate per rispettare la d
 - **Informativa privacy:** la registrazione non chiede di accettarla.
 - **Chiusura anticipata del cerchio:** il codice permette a un admin di chiudere il cerchio in anticipo. Le specifiche lo escludono.
 - **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio.
-- **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Mancano motivazione e numero di telefono.
+- **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Manca la motivazione.
 - **Pannello web di amministrazione:** non esiste. Le schermate admin attuali sono solo nell'app mobile.
 - **Accesso al pannello web:** l'accesso con codice SMS esiste già. Va costruito il pannello e il controllo del ruolo all'ingresso.
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
 - **Revoca del ban:** il codice non prevede di revocare un ban.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
+- **App mobile e backend disallineati:** l'app usa ancora il vecchio flusso SMS e Socket.IO. Il backend si aspetta il token di Firebase Phone Authentication e usa solo Firebase Cloud Messaging. Oggi l'accesso dall'app non può funzionare.
 - **Gruppi:** il codice non lega gli utenti al ciclo in cui si sono registrati. Round di conferma, Canale Principale e cerchio sono unici per tutti.
 - **Lista d'attesa:** non esiste. A ciclo chiuso il codice rifiuta semplicemente la registrazione.
-- **Sequenza unica dei post:** il codice programma ogni post a una data fissa, non relativa all'inizio del gruppo.
+- **Sequenza unica dei post:** il codice programma ogni post a una data fissa. Le specifiche chiedono un giorno relativo all'inizio del gruppo.
 - **Email:** il modello utente non ha un campo email e il backend non invia email.
 - **Messaggi modificabili:** non esiste un modo per far modificare al Super Admin i testi per sospesi e bannati.
