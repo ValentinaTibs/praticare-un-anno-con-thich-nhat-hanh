@@ -1,157 +1,126 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createTestApp, db, makeUser, makeAdmin } from './helpers.js';
+import { describe, it, expect } from 'vitest';
+import { createTestApp, givenUser, givenAdmin, givenOpenSharingChannel, loginAs } from './helpers.js';
 
-async function loginAs(app: Awaited<ReturnType<typeof createTestApp>>, user: ReturnType<typeof makeUser>) {
-  db.user.findUnique.mockResolvedValueOnce(user);
-  db.refreshToken.create.mockResolvedValue({});
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/verify-otp',
-    payload: { phoneNumber: user.phoneNumber, code: '123456' },
-  });
-  db.user.findUnique.mockResolvedValue(user); // re-arm authenticate
-  return res.json<{ accessToken: string }>().accessToken;
-}
+type App = Awaited<ReturnType<typeof createTestApp>>;
+type Headers = { authorization: string };
 
-describe('Sharing channel', () => {
-  beforeEach(() => vi.clearAllMocks());
+const join = (app: App, headers: Headers) =>
+  app.inject({ method: 'POST', url: '/api/sharing-channel/join', headers });
+const leave = (app: App, headers: Headers) =>
+  app.inject({ method: 'DELETE', url: '/api/sharing-channel/leave', headers });
+const readPosts = (app: App, headers: Headers) =>
+  app.inject({ method: 'GET', url: '/api/sharing-channel/posts', headers });
+const writePost = (app: App, headers: Headers, content: string) =>
+  app.inject({ method: 'POST', url: '/api/sharing-channel/posts', headers, payload: { content } });
 
-  it('GET /status returns closed when no channel open', async () => {
+describe('Cerchio di condivisione', () => {
+  it('senza cerchio aperto lo stato è chiuso', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeUser());
-    db.sharingChannel.findFirst.mockResolvedValue(null);
+    const headers = await loginAs(app, await givenUser());
 
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/sharing-channel/status',
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const res = await app.inject({ method: 'GET', url: '/api/sharing-channel/status', headers });
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ status: 'closed' });
   });
 
-  it('GET /status returns open with scheduledClosedAt', async () => {
+  it('con il cerchio aperto lo stato mostra l\'orario di chiusura e se l\'utente è entrato', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeUser());
-    const closeTime = new Date(Date.now() + 3600_000);
-    db.sharingChannel.findFirst.mockResolvedValue({
-      id: 'ch-1', status: 'open', openedAt: new Date(), scheduledClosedAt: closeTime,
-    });
-    db.sharingChannelMember.findFirst.mockResolvedValue(null);
+    const closesAt = new Date('2030-01-05T12:00:00.000Z');
+    await givenOpenSharingChannel(closesAt);
+    const headers = await loginAs(app, await givenUser());
 
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/sharing-channel/status',
-      headers: { authorization: `Bearer ${token}` },
+    const before = await app.inject({ method: 'GET', url: '/api/sharing-channel/status', headers });
+    expect(before.json()).toMatchObject({
+      status: 'open',
+      scheduledClosedAt: '2030-01-05T12:00:00.000Z',
+      joined: false,
     });
 
-    expect(res.json()).toMatchObject({ status: 'open', joined: false });
+    await join(app, headers);
+
+    const after = await app.inject({ method: 'GET', url: '/api/sharing-channel/status', headers });
+    expect(after.json()).toMatchObject({ joined: true });
   });
 
-  it('POST /open requires scheduledClosedAt', async () => {
+  it('chi è entrato scrive un messaggio e gli altri partecipanti lo vedono con nome e cognome', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeAdmin());
+    await givenOpenSharingChannel();
+    const anna = await loginAs(app, await givenUser({ name: 'Anna', surname: 'Rossi' }));
+    const marco = await loginAs(app, await givenUser({ name: 'Marco', surname: 'Bianchi' }));
+    await join(app, anna);
+    await join(app, marco);
 
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/sharing-channel/open',
-      headers: { authorization: `Bearer ${token}` },
-      payload: {},
-    });
+    const sent = await writePost(app, anna, 'Oggi mi sento grata');
+    expect(sent.statusCode).toBe(201);
 
-    expect(res.statusCode).toBe(400);
+    const posts = await readPosts(app, marco);
+    expect(posts.statusCode).toBe(200);
+    expect(posts.json()).toMatchObject([
+      { content: 'Oggi mi sento grata', author: { name: 'Anna', surname: 'Rossi' } },
+    ]);
   });
 
-  it('POST /open creates channel with scheduled close time', async () => {
+  it('non si può entrare due volte', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeAdmin());
-    const closeTime = new Date(Date.now() + 3600_000).toISOString();
-    db.sharingChannel.findFirst.mockResolvedValue(null);
-    db.sharingChannel.create.mockResolvedValue({
-      id: 'ch-1', status: 'open', openedAt: new Date(), scheduledClosedAt: new Date(closeTime),
-    });
+    await givenOpenSharingChannel();
+    const headers = await loginAs(app, await givenUser());
+    await join(app, headers);
 
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/sharing-channel/open',
-      headers: { authorization: `Bearer ${token}` },
-      payload: { scheduledClosedAt: closeTime },
-    });
-
-    expect(res.statusCode).toBe(201);
-    expect(db.sharingChannel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ scheduledClosedAt: new Date(closeTime) }) }),
-    );
-  });
-
-  it('POST /join returns history for new member', async () => {
-    const app = await createTestApp();
-    const user = makeUser();
-    const token = await loginAs(app, user);
-    const channel = { id: 'ch-1', status: 'open' };
-    db.sharingChannel.findFirst.mockResolvedValue(channel);
-    db.sharingChannelMember.findFirst.mockResolvedValue(null);
-    db.sharingChannelMember.create.mockResolvedValue({});
-    db.user.findUniqueOrThrow.mockResolvedValue(user);
-    db.sharingChannelPost.findMany.mockResolvedValue([]);
-
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/sharing-channel/join',
-      headers: { authorization: `Bearer ${token}` },
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ joined: true, history: [] });
-  });
-
-  it('POST /join returns 409 if already a member', async () => {
-    const app = await createTestApp();
-    const token = await loginAs(app, makeUser());
-    db.sharingChannel.findFirst.mockResolvedValue({ id: 'ch-1', status: 'open' });
-    db.sharingChannelMember.findFirst.mockResolvedValue({ id: 'mem-1' });
-
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/sharing-channel/join',
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const res = await join(app, headers);
 
     expect(res.statusCode).toBe(409);
   });
 
-  it('DELETE /leave removes membership', async () => {
+  it('chi non è entrato non può leggere né scrivere', async () => {
     const app = await createTestApp();
-    const user = makeUser();
-    const token = await loginAs(app, user);
-    db.sharingChannel.findFirst.mockResolvedValue({ id: 'ch-1', status: 'open' });
-    db.sharingChannelMember.findFirst.mockResolvedValue({ id: 'mem-1' });
-    db.sharingChannelMember.delete.mockResolvedValue({});
-    db.user.findUniqueOrThrow.mockResolvedValue(user);
+    await givenOpenSharingChannel();
+    const headers = await loginAs(app, await givenUser());
 
-    const res = await app.inject({
-      method: 'DELETE',
-      url: '/api/sharing-channel/leave',
-      headers: { authorization: `Bearer ${token}` },
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ left: true });
+    expect((await readPosts(app, headers)).statusCode).toBe(403);
+    expect((await writePost(app, headers, 'Ciao')).statusCode).toBe(403);
   });
 
-  it('GET /posts returns 403 if not a member', async () => {
+  it('chi esce non può più leggere i messaggi', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeUser());
-    db.sharingChannel.findFirst.mockResolvedValue({ id: 'ch-1', status: 'open' });
-    db.sharingChannelMember.findFirst.mockResolvedValue(null);
+    await givenOpenSharingChannel();
+    const headers = await loginAs(app, await givenUser());
+    await join(app, headers);
 
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/sharing-channel/posts',
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const res = await leave(app, headers);
+    expect(res.statusCode).toBe(200);
 
-    expect(res.statusCode).toBe(403);
+    expect((await readPosts(app, headers)).statusCode).toBe(403);
+  });
+
+  it('un admin cancella un messaggio, un utente non può farlo', async () => {
+    const app = await createTestApp();
+    await givenOpenSharingChannel();
+    const author = await loginAs(app, await givenUser());
+    const admin = await loginAs(app, await givenAdmin());
+    await join(app, author);
+    const post = (await writePost(app, author, 'Da rimuovere')).json();
+
+    const denied = await app.inject({ method: 'DELETE', url: `/api/sharing-channel/posts/${post.id}`, headers: author });
+    expect(denied.statusCode).toBe(403);
+
+    const removed = await app.inject({ method: 'DELETE', url: `/api/sharing-channel/posts/${post.id}`, headers: admin });
+    expect(removed.statusCode).toBe(204);
+
+    expect((await readPosts(app, author)).json()).toEqual([]);
+  });
+
+  it('solo gli admin vedono l\'elenco dei membri', async () => {
+    const app = await createTestApp();
+    await givenOpenSharingChannel();
+    const anna = await loginAs(app, await givenUser({ name: 'Anna' }));
+    const admin = await loginAs(app, await givenAdmin());
+    await join(app, anna);
+
+    const denied = await app.inject({ method: 'GET', url: '/api/sharing-channel/members', headers: anna });
+    expect(denied.statusCode).toBe(403);
+
+    const members = await app.inject({ method: 'GET', url: '/api/sharing-channel/members', headers: admin });
+    expect(members.json()).toMatchObject([{ user: { name: 'Anna' } }]);
   });
 });

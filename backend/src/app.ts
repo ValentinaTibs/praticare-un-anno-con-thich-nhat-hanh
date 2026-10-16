@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import fjwt from '@fastify/jwt';
+import { Prisma } from '@prisma/client';
 import { env } from './config/env.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
@@ -15,7 +16,7 @@ import { cycleRoutes } from './routes/cycles.js';
 export async function buildApp() {
   const app = Fastify({
     logger: {
-      level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+      level: env.NODE_ENV === 'test' ? 'silent' : env.NODE_ENV === 'production' ? 'info' : 'debug',
       transport:
         env.NODE_ENV !== 'production'
           ? { target: 'pino-pretty', options: { colorize: true } }
@@ -33,6 +34,19 @@ export async function buildApp() {
     (request as any).jwtVerify = request.jwtVerify.bind(request);
   });
 
+  // Registered before the routes: Fastify plugins capture the error handler at registration time.
+  app.setErrorHandler((error, _request, reply) => {
+    // P2025: the record targeted by findUniqueOrThrow/update/delete does not exist
+    const notFound = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025';
+    const statusCode = notFound ? 404 : error.statusCode ?? 500;
+    app.log.error(error);
+    reply.status(statusCode).send({
+      error: error.name,
+      message: error.message,
+      statusCode,
+    });
+  });
+
   app.get('/health', async () => ({ status: 'ok' }));
 
   await app.register(authRoutes, { prefix: '/api/auth' });
@@ -42,16 +56,6 @@ export async function buildApp() {
   await app.register(confirmationRoutes, { prefix: '/api/confirmations' });
   await app.register(adminRoutes, { prefix: '/api/admin' });
   await app.register(cycleRoutes, { prefix: '/api/cycles' });
-
-  app.setErrorHandler((error, _request, reply) => {
-    const statusCode = error.statusCode ?? 500;
-    app.log.error(error);
-    reply.status(statusCode).send({
-      error: error.name,
-      message: error.message,
-      statusCode,
-    });
-  });
 
   return app;
 }

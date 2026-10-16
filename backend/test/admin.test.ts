@@ -1,91 +1,90 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createTestApp, db, makeUser, makeAdmin } from './helpers.js';
+import { describe, it, expect } from 'vitest';
+import { createTestApp, givenUser, givenAdmin, firebaseTokenFor, loginAs } from './helpers.js';
 
-async function loginAs(app: Awaited<ReturnType<typeof createTestApp>>, user: ReturnType<typeof makeUser>) {
-  db.user.findUnique.mockResolvedValueOnce(user);
-  db.refreshToken.create.mockResolvedValue({});
-  const res = await app.inject({
+function verifyFirebase(app: Awaited<ReturnType<typeof createTestApp>>, phoneNumber: string) {
+  return app.inject({
     method: 'POST',
-    url: '/api/auth/verify-otp',
-    payload: { phoneNumber: user.phoneNumber, code: '123456' },
+    url: '/api/auth/verify-firebase',
+    payload: { idToken: firebaseTokenFor(phoneNumber) },
   });
-  db.user.findUnique.mockResolvedValue(user);
-  return res.json<{ accessToken: string }>().accessToken;
 }
 
-describe('Admin — ban', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('PATCH /:id/ban sets status to banned and blocks phone permanently', async () => {
+describe('Gestione utenti da parte degli admin', () => {
+  it('un utente sospeso non può più accedere finché non viene riattivato', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeAdmin());
-    const target = makeUser({ id: 'target-1', phoneNumber: '+39999' });
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser();
 
-    db.user.findUniqueOrThrow.mockResolvedValue(target);
-    db.user.update.mockResolvedValue({ ...target, status: 'banned' });
-    db.bannedPhone.upsert.mockResolvedValue({});
-    db.$transaction.mockResolvedValue([{ status: 'banned' }, {}]);
+    await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/suspend`, headers });
+    expect((await verifyFirebase(app, target.phoneNumber)).statusCode).toBe(403);
 
-    const res = await app.inject({
-      method: 'PATCH',
-      url: `/api/admin/${target.id}/ban`,
-      headers: { authorization: `Bearer ${token}` },
-    });
-
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ status: 'banned' });
+    await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/reactivate`, headers });
+    expect((await verifyFirebase(app, target.phoneNumber)).statusCode).toBe(200);
   });
 
-  it('DELETE /:id removes user and temporarily blocks phone', async () => {
+  it('un utente bannato non può più accedere e riceve l\'email di contatto', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeAdmin());
-    const target = makeUser({ id: 'target-2', phoneNumber: '+39888' });
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser();
 
-    db.user.findUniqueOrThrow.mockResolvedValue(target);
-    db.mainChannelPost.updateMany.mockResolvedValue({ count: 0 });
-    db.bannedPhone.upsert.mockResolvedValue({});
-    db.user.delete.mockResolvedValue(target);
-    db.$transaction.mockResolvedValue([{}, target]);
+    const ban = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/ban`, headers });
+    expect(ban.statusCode).toBe(200);
 
-    const res = await app.inject({
-      method: 'DELETE',
-      url: `/api/admin/${target.id}`,
-      headers: { authorization: `Bearer ${token}` },
-    });
-
-    expect(res.statusCode).toBe(204);
-    expect(db.mainChannelPost.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { isDraft: true } }),
-    );
+    const login = await verifyFirebase(app, target.phoneNumber);
+    expect(login.statusCode).toBe(403);
+    expect(login.json()).toMatchObject({ contact: 'admin@example.com' });
   });
 
-  it('PATCH /:id/review marks user as reviewed', async () => {
+  it('un utente rimosso sparisce e il suo numero è bloccato fino al prossimo ciclo', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeAdmin());
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser();
 
-    db.user.update.mockResolvedValue({ id: 'user-1', reviewedByAdmin: true });
+    const remove = await app.inject({ method: 'DELETE', url: `/api/admin/${target.id}`, headers });
+    expect(remove.statusCode).toBe(204);
 
-    const res = await app.inject({
-      method: 'PATCH',
-      url: '/api/admin/user-1/review',
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const lookup = await app.inject({ method: 'GET', url: `/api/users/${target.id}`, headers });
+    expect(lookup.statusCode).toBe(404);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ reviewedByAdmin: true });
+    const login = await verifyFirebase(app, target.phoneNumber);
+    expect(login.statusCode).toBe(403);
+    expect(login.json().message).toMatch(/closed/i);
   });
 
-  it('PATCH /:id/role requires super_admin', async () => {
+  it('un admin segna un nuovo utente come esaminato', async () => {
     const app = await createTestApp();
-    const token = await loginAs(app, makeAdmin()); // regular admin, not super_admin
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser({ reviewedByAdmin: false });
 
-    const res = await app.inject({
+    await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/review`, headers });
+
+    const pending = await app.inject({ method: 'GET', url: '/api/users?reviewed=false', headers });
+    expect(pending.json().users.map((u: { id: string }) => u.id)).not.toContain(target.id);
+  });
+
+  it('solo il Super Admin può cambiare il ruolo di un utente', async () => {
+    const app = await createTestApp();
+    const target = await givenUser();
+
+    const asAdmin = await loginAs(app, await givenAdmin());
+    const denied = await app.inject({
       method: 'PATCH',
-      url: '/api/admin/user-1/role',
-      headers: { authorization: `Bearer ${token}` },
+      url: `/api/admin/${target.id}/role`,
+      headers: asAdmin,
       payload: { role: 'admin' },
     });
+    expect(denied.statusCode).toBe(403);
 
-    expect(res.statusCode).toBe(403);
+    const asSuperAdmin = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
+    const allowed = await app.inject({
+      method: 'PATCH',
+      url: `/api/admin/${target.id}/role`,
+      headers: asSuperAdmin,
+      payload: { role: 'admin' },
+    });
+    expect(allowed.statusCode).toBe(200);
+
+    const lookup = await app.inject({ method: 'GET', url: `/api/users/${target.id}`, headers: asSuperAdmin });
+    expect(lookup.json()).toMatchObject({ role: 'admin' });
   });
 });
