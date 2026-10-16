@@ -45,9 +45,11 @@ model User {
   status          UserStatus @default(active)
   reviewedByAdmin Boolean    @default(false) @map("reviewed_by_admin")
   lastConfirmedAt DateTime?  @map("last_confirmed_at")
+  groupId         String?    @map("group_id")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
+  group                 Group?                 @relation(fields: [groupId], references: [id], onDelete: SetNull)
   devices               UserDevice[]
   otpCodes              OtpCode[]
   refreshTokens         RefreshToken[]
@@ -116,12 +118,14 @@ model MainChannelPost {
 
 model SharingChannel {
   id                String               @id @default(uuid())
+  groupId           String               @map("group_id")
   status            SharingChannelStatus @default(closed)
   openedBy          String?              @map("opened_by")
   openedAt          DateTime?            @map("opened_at")
   scheduledClosedAt DateTime?            @map("scheduled_closed_at")
   closedAt          DateTime?            @map("closed_at")
 
+  group   Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
   opener  User?                  @relation(fields: [openedBy], references: [id])
   members SharingChannelMember[]
   posts   SharingChannelPost[]
@@ -176,9 +180,26 @@ model RegistrationCycle {
   openedAt DateTime?   @map("opened_at")
   closedAt DateTime?   @map("closed_at")
 
-  opener User? @relation(fields: [openedBy], references: [id])
+  opener User?  @relation(fields: [openedBy], references: [id])
+  group  Group?
 
   @@map("registration_cycles")
+}
+
+// The users registered in the same registration cycle. Each group has its own
+// Main Channel, sharing channel and confirmation rounds.
+model Group {
+  id        String    @id @default(uuid())
+  cycleId   String    @unique @map("cycle_id")
+  startedAt DateTime  @map("started_at")
+  endedAt   DateTime? @map("ended_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  cycle           RegistrationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  members         User[]
+  sharingChannels SharingChannel[]
+
+  @@map("groups")
 }
 
 model BannedPhone {

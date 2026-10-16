@@ -14,6 +14,7 @@ const adminUserSelect = {
   status: true,
   reviewedByAdmin: true,
   lastConfirmedAt: true,
+  groupId: true,
   createdAt: true,
 } as const;
 
@@ -31,6 +32,7 @@ export async function userRoutes(app: FastifyInstance) {
         status: true,
         lastConfirmedAt: true,
         createdAt: true,
+        group: { select: { id: true, startedAt: true, endedAt: true } },
       },
     });
     return reply.send(user);
@@ -50,17 +52,18 @@ export async function userRoutes(app: FastifyInstance) {
     return reply.send(user);
   });
 
-  // Admin: GET /api/users — supports ?status=&reviewed=false
+  // Admin: GET /api/users — supports ?status=&reviewed=false&groupId=
   app.get(
     '/',
     { preHandler: [authenticate, authorize('admin')] },
     async (request, reply) => {
-      const { page = '1', limit = '20', status, reviewed } = request.query as Record<string, string>;
+      const { page = '1', limit = '20', status, reviewed, groupId } = request.query as Record<string, string>;
       const skip = (Number(page) - 1) * Number(limit);
 
       const where: Record<string, unknown> = {};
       if (status) where.status = status;
       if (reviewed === 'false') where.reviewedByAdmin = false;
+      if (groupId) where.groupId = groupId;
 
       const [users, total] = await Promise.all([
         prisma.user.findMany({

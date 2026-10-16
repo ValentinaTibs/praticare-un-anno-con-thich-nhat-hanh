@@ -16,6 +16,7 @@ declare module 'fastify' {
       id: string;
       role: string;
       status: UserStatus;
+      groupId: string | null;
     };
   }
 }
@@ -27,7 +28,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, role: true, status: true },
+      select: { id: true, role: true, status: true, groupId: true },
     });
 
     if (!dbUser) {

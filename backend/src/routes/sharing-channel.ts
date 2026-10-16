@@ -1,9 +1,9 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-import { pushToAll, pushToChannelMembers } from '../services/push.service.js';
+import { pushToGroup, pushToChannelMembers } from '../services/push.service.js';
 
 const postBody = z.object({
   content: z.string().min(1),
@@ -14,13 +14,26 @@ const openBody = z.object({
   scheduledClosedAt: z.string().datetime(),
 });
 
+const ROLES_ACROSS_GROUPS = ['admin', 'super_admin'];
+
+// Each group has its own sharing channel. Users act on their group's channel;
+// admins manage every group and can pick one with ?groupId=.
+function groupIdFor(request: FastifyRequest) {
+  const { groupId } = request.query as { groupId?: string };
+  if (groupId && ROLES_ACROSS_GROUPS.includes(request.user.role)) return groupId;
+  return request.user.groupId;
+}
+
+function findOpenChannel(request: FastifyRequest) {
+  const groupId = groupIdFor(request);
+  if (!groupId) return null;
+  return prisma.sharingChannel.findFirst({ where: { status: 'open', groupId } });
+}
+
 export async function sharingChannelRoutes(app: FastifyInstance) {
   // GET /api/sharing-channel/status
   app.get('/status', { preHandler: authenticate }, async (request, reply) => {
-    const channel = await prisma.sharingChannel.findFirst({
-      where: { status: 'open' },
-      select: { id: true, status: true, openedAt: true, scheduledClosedAt: true },
-    });
+    const channel = await findOpenChannel(request);
 
     if (!channel) return reply.send({ status: 'closed' });
 
@@ -39,7 +52,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 
   // POST /api/sharing-channel/join
   app.post('/join', { preHandler: authenticate }, async (request, reply) => {
-    const channel = await prisma.sharingChannel.findFirst({ where: { status: 'open' } });
+    const channel = await findOpenChannel(request);
     if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
 
     const existing = await prisma.sharingChannelMember.findFirst({
@@ -69,7 +82,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 
   // DELETE /api/sharing-channel/leave
   app.delete('/leave', { preHandler: authenticate }, async (request, reply) => {
-    const channel = await prisma.sharingChannel.findFirst({ where: { status: 'open' } });
+    const channel = await findOpenChannel(request);
     if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
 
     const member = await prisma.sharingChannelMember.findFirst({
@@ -91,7 +104,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 
   // GET /api/sharing-channel/posts — joined members only
   app.get('/posts', { preHandler: authenticate }, async (request, reply) => {
-    const channel = await prisma.sharingChannel.findFirst({ where: { status: 'open' } });
+    const channel = await findOpenChannel(request);
     if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
 
     const member = await prisma.sharingChannelMember.findFirst({
@@ -112,7 +125,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
   app.post('/posts', { preHandler: authenticate }, async (request, reply) => {
     const { content, mediaUrl } = postBody.parse(request.body);
 
-    const channel = await prisma.sharingChannel.findFirst({ where: { status: 'open' } });
+    const channel = await findOpenChannel(request);
     if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
 
     const member = await prisma.sharingChannelMember.findFirst({
@@ -163,11 +176,15 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { scheduledClosedAt } = openBody.parse(request.body);
 
-      const existing = await prisma.sharingChannel.findFirst({ where: { status: 'open' } });
+      const groupId = groupIdFor(request);
+      if (!groupId) return reply.status(400).send({ message: 'Choose a group with ?groupId=' });
+
+      const existing = await findOpenChannel(request);
       if (existing) return reply.status(409).send({ message: 'Sharing channel is already open' });
 
       const channel = await prisma.sharingChannel.create({
         data: {
+          groupId,
           status: 'open',
           openedBy: request.user.id,
           openedAt: new Date(),
@@ -175,7 +192,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
         },
       });
 
-      await pushToAll('Sharing channel opened', 'Tap to join the sharing session', {
+      await pushToGroup(groupId, 'Sharing channel opened', 'Tap to join the sharing session', {
         type: 'sharing_channel:opened',
         channelId: channel.id,
       });
@@ -189,7 +206,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
     '/close',
     { preHandler: [authenticate, authorize('admin')] },
     async (request, reply) => {
-      const channel = await prisma.sharingChannel.findFirst({ where: { status: 'open' } });
+      const channel = await findOpenChannel(request);
       if (!channel) return reply.status(404).send({ message: 'No open sharing channel' });
 
       await closeChannel(channel.id);
@@ -202,8 +219,8 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
   app.get(
     '/members',
     { preHandler: [authenticate, authorize('admin')] },
-    async (_request, reply) => {
-      const channel = await prisma.sharingChannel.findFirst({ where: { status: 'open' } });
+    async (request, reply) => {
+      const channel = await findOpenChannel(request);
       if (!channel) return reply.send([]);
 
       const members = await prisma.sharingChannelMember.findMany({

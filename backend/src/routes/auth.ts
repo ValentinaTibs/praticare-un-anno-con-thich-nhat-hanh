@@ -104,7 +104,10 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
-    const cycle = await prisma.registrationCycle.findFirst({ where: { status: 'open' } });
+    const cycle = await prisma.registrationCycle.findFirst({
+      where: { status: 'open' },
+      include: { group: true },
+    });
     if (!cycle) {
       return reply.status(403).send({ message: 'Registrations are currently closed.' });
     }
@@ -117,7 +120,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     const user = await prisma.user.create({
-      data: { phoneNumber, name, surname, motivation, lastConfirmedAt: new Date() },
+      data: { phoneNumber, name, surname, motivation, lastConfirmedAt: new Date(), groupId: cycle.group?.id },
     });
 
     const { accessToken, refreshToken } = await issueTokens(app, user.id, user.role);

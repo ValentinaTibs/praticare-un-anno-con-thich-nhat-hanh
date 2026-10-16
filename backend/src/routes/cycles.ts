@@ -20,8 +20,16 @@ export async function cycleRoutes(app: FastifyInstance) {
     // Unblock phones that were only temporarily banned (removed users)
     await prisma.bannedPhone.deleteMany({ where: { permanent: false } });
 
+    // Opening a cycle starts a new group: everyone who registers in it joins that group
+    const openedAt = new Date();
     const cycle = await prisma.registrationCycle.create({
-      data: { status: 'open', openedBy: request.user.id, openedAt: new Date() },
+      data: {
+        status: 'open',
+        openedBy: request.user.id,
+        openedAt,
+        group: { create: { startedAt: openedAt } },
+      },
+      include: { group: true },
     });
 
     return reply.status(201).send(cycle);
