@@ -5,7 +5,7 @@ import {
   createTestApp,
   givenUser,
   givenAdmin,
-  givenBlockedPhone,
+  givenBlockedEmail,
   givenOpenCycle,
   firebaseTokenFor,
   loginAs,
@@ -130,7 +130,7 @@ describe('Cicli di registrazione', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { idToken: firebaseTokenFor('+393337770000'), name: 'Anna', surname: 'Rossi', motivation: 'Praticare' },
+      payload: { idToken: firebaseTokenFor('anna@test.local'), name: 'Anna', surname: 'Rossi', motivation: 'Praticare' },
     });
     expect(res.statusCode).toBe(403);
   });
@@ -145,11 +145,11 @@ describe('Cicli di registrazione', () => {
     expect(res.statusCode).toBe(201);
   });
 
-  it('aprire un ciclo sblocca i numeri rimossi, non quelli bannati', async () => {
+  it('aprire un ciclo sblocca le email rimosse, non quelli bannati', async () => {
     const app = await createTestApp();
     const headers = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
-    await givenBlockedPhone('+393330000001', { permanent: false });
-    await givenBlockedPhone('+393330000002', { permanent: true });
+    await givenBlockedEmail('removed@test.local', { permanent: false });
+    await givenBlockedEmail('banned@test.local', { permanent: true });
 
     await openCycle(app, headers);
     await app.inject({ method: 'POST', url: '/api/cycles/close', headers });
@@ -157,14 +157,14 @@ describe('Cicli di registrazione', () => {
     const removed = await app.inject({
       method: 'POST',
       url: '/api/auth/verify-firebase',
-      payload: { idToken: firebaseTokenFor('+393330000001') },
+      payload: { idToken: firebaseTokenFor('removed@test.local') },
     });
     expect(removed.json()).toMatchObject({ status: 'register' });
 
     const banned = await app.inject({
       method: 'POST',
       url: '/api/auth/verify-firebase',
-      payload: { idToken: firebaseTokenFor('+393330000002') },
+      payload: { idToken: firebaseTokenFor('banned@test.local') },
     });
     expect(banned.statusCode).toBe(403);
   });

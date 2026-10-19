@@ -36,8 +36,8 @@ export async function cycleRoutes(app: FastifyInstance) {
     const existing = await prisma.registrationCycle.findFirst({ where: { status: 'open' } });
     if (existing) return reply.status(409).send({ message: 'A registration cycle is already open' });
 
-    // Unblock phones that were only temporarily banned (removed users)
-    await prisma.bannedPhone.deleteMany({ where: { permanent: false } });
+    // Unblock emails that were only temporarily banned (removed users)
+    await prisma.bannedEmail.deleteMany({ where: { permanent: false } });
 
     // Opening a cycle starts a new group: everyone who registers in it joins that group
     const cycle = await prisma.registrationCycle.create({

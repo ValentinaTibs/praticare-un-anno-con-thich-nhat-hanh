@@ -31,13 +31,13 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.send(user);
   });
 
-  // PATCH /api/admin/:id/ban — permanent ban: account stays but is marked banned, phone blocked forever
+  // PATCH /api/admin/:id/ban — permanent ban: account stays but is marked banned, email blocked forever
   app.patch('/:id/ban', { preHandler: adminHandler }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     const user = await prisma.user.findUniqueOrThrow({
       where: { id },
-      select: { phoneNumber: true },
+      select: { email: true },
     });
 
     await prisma.$transaction([
@@ -45,23 +45,23 @@ export async function adminRoutes(app: FastifyInstance) {
         where: { id },
         data: { status: UserStatus.banned },
       }),
-      prisma.bannedPhone.upsert({
-        where: { phoneNumber: user.phoneNumber },
+      prisma.bannedEmail.upsert({
+        where: { email: user.email },
         update: { permanent: true },
-        create: { phoneNumber: user.phoneNumber, permanent: true },
+        create: { email: user.email, permanent: true },
       }),
     ]);
 
     return reply.send({ id, status: 'banned' });
   });
 
-  // DELETE /api/admin/:id — remove user: account deleted, phone blocked until next cycle
+  // DELETE /api/admin/:id — remove user: account deleted, email blocked until next cycle
   app.delete('/:id', { preHandler: adminHandler }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     const user = await prisma.user.findUniqueOrThrow({
       where: { id },
-      select: { phoneNumber: true },
+      select: { email: true },
     });
 
     // Orphan their scheduled posts — mark as draft so they won't auto-publish
@@ -71,10 +71,10 @@ export async function adminRoutes(app: FastifyInstance) {
     });
 
     await prisma.$transaction([
-      prisma.bannedPhone.upsert({
-        where: { phoneNumber: user.phoneNumber },
+      prisma.bannedEmail.upsert({
+        where: { email: user.email },
         update: { permanent: false },
-        create: { phoneNumber: user.phoneNumber, permanent: false },
+        create: { email: user.email, permanent: false },
       }),
       prisma.user.delete({ where: { id } }),
     ]);

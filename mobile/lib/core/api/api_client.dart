@@ -6,8 +6,9 @@ class ApiException implements Exception {
   final int statusCode;
   final String message;
   final String? contact;
+  final String? code;
 
-  ApiException({required this.statusCode, required this.message, this.contact});
+  ApiException({required this.statusCode, required this.message, this.contact, this.code});
 
   @override
   String toString() => message;
@@ -66,10 +67,12 @@ class ApiClient {
     final data = e.response?.data;
     final message = data is Map ? (data['message'] ?? 'An error occurred') : 'An error occurred';
     final contact = data is Map ? data['contact'] as String? : null;
+    final code = data is Map ? data['code'] as String? : null;
     return ApiException(
       statusCode: e.response?.statusCode ?? 0,
       message: message.toString(),
       contact: contact,
+      code: code,
     );
   }
 }

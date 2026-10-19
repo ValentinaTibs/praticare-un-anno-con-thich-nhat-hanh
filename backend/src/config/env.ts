@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 const schema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // Defaults to production so that a deployment without NODE_ENV never exposes
+  // development-only routes such as /api/auth/dev-login.
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   PORT: z.coerce.number().default(3000),
   HOST: z.string().default('0.0.0.0'),
 

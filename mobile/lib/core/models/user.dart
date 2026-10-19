@@ -2,7 +2,7 @@ class User {
   final String id;
   final String name;
   final String surname;
-  final String? phoneNumber;
+  final String? email;
   final String role;
   final String status;
   final bool reviewedByAdmin;
@@ -14,7 +14,7 @@ class User {
     required this.id,
     required this.name,
     required this.surname,
-    this.phoneNumber,
+    this.email,
     required this.role,
     required this.status,
     this.reviewedByAdmin = false,
@@ -33,7 +33,7 @@ class User {
         id: json['id'] as String,
         name: json['name'] as String,
         surname: json['surname'] as String,
-        phoneNumber: json['phoneNumber'] as String?,
+        email: json['email'] as String?,
         role: json['role'] as String,
         status: json['status'] as String,
         reviewedByAdmin: json['reviewedByAdmin'] as bool? ?? false,

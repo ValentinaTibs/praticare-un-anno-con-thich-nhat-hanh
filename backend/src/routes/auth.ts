@@ -1,8 +1,8 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
-import { verifyFirebaseToken } from '../services/otp.service.js';
+import { verifyFirebaseToken, EmailNotVerifiedError } from '../services/firebase-auth.service.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { randomUUID } from 'crypto';
 import { addDays } from '../utils/date.js';
@@ -21,16 +21,18 @@ const deviceBody = z.object({ fcmToken: z.string() });
 export async function authRoutes(app: FastifyInstance) {
   // POST /api/auth/dev-login — development only, skips Firebase entirely
   if (env.NODE_ENV === 'development') {
+    app.log.warn('NODE_ENV=development: POST /api/auth/dev-login is enabled (login without Firebase)');
     app.post('/dev-login', async (request, reply) => {
-      const { phoneNumber } = z.object({ phoneNumber: z.string() }).parse(request.body);
+      const { email: rawEmail } = z.object({ email: z.string().email() }).parse(request.body);
+      const email = rawEmail.trim().toLowerCase();
 
-      const banned = await prisma.bannedPhone.findUnique({ where: { phoneNumber } });
+      const banned = await prisma.bannedEmail.findUnique({ where: { email } });
       if (banned?.permanent) {
-        return reply.status(403).send({ message: 'Phone permanently banned.', contact: env.ADMIN_CONTACT_EMAIL });
+        return reply.status(403).send({ message: 'Email permanently banned.', contact: env.ADMIN_CONTACT_EMAIL });
       }
 
-      const user = await prisma.user.findUnique({ where: { phoneNumber } });
-      if (!user) return reply.send({ status: 'register', phoneNumber });
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) return reply.send({ status: 'register', email });
 
       if (user.status === 'banned') {
         return reply.status(403).send({ message: 'Account banned.', contact: env.ADMIN_CONTACT_EMAIL });
@@ -48,31 +50,27 @@ export async function authRoutes(app: FastifyInstance) {
   app.post('/verify-firebase', async (request, reply) => {
     const { idToken } = firebaseBody.parse(request.body);
 
-    let phoneNumber: string;
-    try {
-      phoneNumber = await verifyFirebaseToken(idToken);
-    } catch {
-      return reply.status(401).send({ message: 'Invalid Firebase token' });
-    }
+    const email = await emailFromToken(idToken, reply);
+    if (!email) return reply;
 
-    const banned = await prisma.bannedPhone.findUnique({ where: { phoneNumber } });
+    const banned = await prisma.bannedEmail.findUnique({ where: { email } });
     if (banned?.permanent) {
       return reply.status(403).send({
-        message: 'This phone number has been permanently banned.',
+        message: 'This email has been permanently banned.',
         contact: env.ADMIN_CONTACT_EMAIL,
       });
     }
 
-    const user = await prisma.user.findUnique({ where: { phoneNumber } });
+    const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
       if (banned && !banned.permanent) {
         const cycle = await findOpenCycle();
         if (!cycle) {
-          return reply.status(403).send({ message: 'Registrations are currently closed.' });
+          return reply.status(403).send({ message: 'Registrations are currently closed.', code: 'registrations_closed' });
         }
       }
-      return reply.status(200).send({ status: 'register', phoneNumber });
+      return reply.status(200).send({ status: 'register', email });
     }
 
     if (user.status === 'banned') {
@@ -90,35 +88,31 @@ export async function authRoutes(app: FastifyInstance) {
   app.post('/register', async (request, reply) => {
     const { idToken, name, surname, motivation } = registerBody.parse(request.body);
 
-    let phoneNumber: string;
-    try {
-      phoneNumber = await verifyFirebaseToken(idToken);
-    } catch {
-      return reply.status(401).send({ message: 'Invalid Firebase token' });
-    }
+    const email = await emailFromToken(idToken, reply);
+    if (!email) return reply;
 
-    const bannedPhone = await prisma.bannedPhone.findUnique({ where: { phoneNumber } });
-    if (bannedPhone?.permanent) {
+    const bannedEmail = await prisma.bannedEmail.findUnique({ where: { email } });
+    if (bannedEmail?.permanent) {
       return reply.status(403).send({
-        message: 'This phone number has been permanently banned.',
+        message: 'This email has been permanently banned.',
         contact: env.ADMIN_CONTACT_EMAIL,
       });
     }
 
     const cycle = await findOpenCycle();
     if (!cycle) {
-      return reply.status(403).send({ message: 'Registrations are currently closed.' });
+      return reply.status(403).send({ message: 'Registrations are currently closed.', code: 'registrations_closed' });
     }
 
-    const existing = await prisma.user.findUnique({ where: { phoneNumber } });
-    if (existing) return reply.status(409).send({ message: 'Phone already registered' });
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return reply.status(409).send({ message: 'Email already registered' });
 
-    if (bannedPhone) {
-      await prisma.bannedPhone.delete({ where: { phoneNumber } });
+    if (bannedEmail) {
+      await prisma.bannedEmail.delete({ where: { email } });
     }
 
     const user = await prisma.user.create({
-      data: { phoneNumber, name, surname, motivation, lastConfirmedAt: new Date(), groupId: cycle.group?.id },
+      data: { email, name, surname, motivation, lastConfirmedAt: new Date(), groupId: cycle.group?.id },
     });
 
     const { accessToken, refreshToken } = await issueTokens(app, user.id, user.role);
@@ -179,6 +173,20 @@ export async function authRoutes(app: FastifyInstance) {
   });
 }
 
+// Returns the verified email of a Firebase idToken, or sends the error reply and returns null.
+async function emailFromToken(idToken: string, reply: FastifyReply): Promise<string | null> {
+  try {
+    return await verifyFirebaseToken(idToken);
+  } catch (err) {
+    if (err instanceof EmailNotVerifiedError) {
+      reply.status(403).send({ message: 'Email not verified.', code: 'email_not_verified' });
+    } else {
+      reply.status(401).send({ message: 'Invalid Firebase token' });
+    }
+    return null;
+  }
+}
+
 async function issueTokens(app: FastifyInstance, userId: string, role: string) {
   const accessToken = app.jwt.sign(
     { sub: userId, role },
@@ -197,6 +205,13 @@ async function issueTokens(app: FastifyInstance, userId: string, role: string) {
   return { accessToken, refreshToken };
 }
 
-function safeUser(user: { id: string; name: string; surname: string; role: string; status: string }) {
-  return { id: user.id, name: user.name, surname: user.surname, role: user.role, status: user.status };
+function safeUser(user: { id: string; email: string; name: string; surname: string; role: string; status: string }) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    surname: user.surname,
+    role: user.role,
+    status: user.status,
+  };
 }

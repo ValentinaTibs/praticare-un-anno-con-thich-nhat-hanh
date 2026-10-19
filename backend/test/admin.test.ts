@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createTestApp, givenUser, givenAdmin, firebaseTokenFor, loginAs } from './helpers.js';
 
-function verifyFirebase(app: Awaited<ReturnType<typeof createTestApp>>, phoneNumber: string) {
+function verifyFirebase(app: Awaited<ReturnType<typeof createTestApp>>, email: string) {
   return app.inject({
     method: 'POST',
     url: '/api/auth/verify-firebase',
-    payload: { idToken: firebaseTokenFor(phoneNumber) },
+    payload: { idToken: firebaseTokenFor(email) },
   });
 }
 
@@ -16,10 +16,10 @@ describe('Gestione utenti da parte degli admin', () => {
     const target = await givenUser();
 
     await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/suspend`, headers });
-    expect((await verifyFirebase(app, target.phoneNumber)).statusCode).toBe(403);
+    expect((await verifyFirebase(app, target.email)).statusCode).toBe(403);
 
     await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/reactivate`, headers });
-    expect((await verifyFirebase(app, target.phoneNumber)).statusCode).toBe(200);
+    expect((await verifyFirebase(app, target.email)).statusCode).toBe(200);
   });
 
   it('un utente bannato non può più accedere e riceve l\'email di contatto', async () => {
@@ -30,12 +30,12 @@ describe('Gestione utenti da parte degli admin', () => {
     const ban = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/ban`, headers });
     expect(ban.statusCode).toBe(200);
 
-    const login = await verifyFirebase(app, target.phoneNumber);
+    const login = await verifyFirebase(app, target.email);
     expect(login.statusCode).toBe(403);
     expect(login.json()).toMatchObject({ contact: 'admin@example.com' });
   });
 
-  it('un utente rimosso sparisce e il suo numero è bloccato fino al prossimo ciclo', async () => {
+  it('un utente rimosso sparisce e la sua email è bloccata fino al prossimo ciclo', async () => {
     const app = await createTestApp();
     const headers = await loginAs(app, await givenAdmin());
     const target = await givenUser();
@@ -46,7 +46,7 @@ describe('Gestione utenti da parte degli admin', () => {
     const lookup = await app.inject({ method: 'GET', url: `/api/users/${target.id}`, headers });
     expect(lookup.statusCode).toBe(404);
 
-    const login = await verifyFirebase(app, target.phoneNumber);
+    const login = await verifyFirebase(app, target.email);
     expect(login.statusCode).toBe(403);
     expect(login.json().message).toMatch(/closed/i);
   });

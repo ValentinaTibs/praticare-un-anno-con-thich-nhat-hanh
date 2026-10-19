@@ -158,8 +158,25 @@ class _UserTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: CircleAvatar(child: Text(user.name[0].toUpperCase())),
-      title: Text('${user.name} ${user.surname}'),
-      subtitle: Text('${user.role} · ${user.status}${!user.reviewedByAdmin ? ' · NEW' : ''}'),
+      title: Text.rich(TextSpan(children: [
+        TextSpan(text: '${user.name} ${user.surname}'),
+        if (!user.reviewedByAdmin)
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Tooltip(
+                message: 'Da revisionare',
+                child: Icon(Icons.new_releases, size: 16, color: Colors.orange[700]),
+              ),
+            ),
+          ),
+      ])),
+      subtitle: Text([
+        if (user.email != null) user.email!,
+        '${user.role} · ${user.status}',
+      ].join('\n')),
+      isThreeLine: user.email != null,
       trailing: isMe
           ? null
           : PopupMenuButton<String>(
@@ -342,7 +359,7 @@ class _CyclesTab extends ConsumerWidget {
               const SizedBox(height: 8),
               if (isOpen)
                 Text(
-                  'Opening a new cycle will unblock phones of previously removed users.',
+                  'Opening a new cycle will unblock the emails of previously removed users.',
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
             ],

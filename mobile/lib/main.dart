@@ -10,8 +10,9 @@ void main() async {
     try {
       await Firebase.initializeApp();
     } catch (e) {
-      // Until the Firebase project exists (issue #5) the app runs without push notifications.
-      debugPrint('Firebase not configured, push notifications disabled: $e');
+      // Until the Firebase project exists (issue #5) the app runs without
+      // push notifications, and login (Firebase email+password) is unavailable.
+      debugPrint('Firebase not configured, login and push notifications disabled: $e');
     }
   }
   runApp(const ProviderScope(child: App()));

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../auth_notifier.dart';
-import '../../../core/api/api_client.dart';
 
+/// Shown when the verified Firebase email is not yet known to the backend.
 class RegisterScreen extends ConsumerStatefulWidget {
-  final String phoneNumber;
-  final String otpCode;
-
-  const RegisterScreen({super.key, required this.phoneNumber, required this.otpCode});
+  const RegisterScreen({super.key});
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -31,26 +29,42 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      await ref.read(authProvider.notifier).register(
-            phoneNumber: widget.phoneNumber,
-            code: widget.otpCode,
+      final step = await ref.read(authProvider.notifier).register(
             name: _nameCtr.text.trim(),
             surname: _surnameCtr.text.trim(),
             motivation: _motivationCtr.text.trim(),
           );
-    } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted && step == AuthStep.verifyEmail) context.go('/auth/verify-email');
+      // On AuthStep.loggedIn the router redirect takes the user to /home.
+    } catch (e) {
+      if (mounted) setState(() => _error = authErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  Future<void> _exit() async {
+    await ref.read(authProvider.notifier).signOutFirebase();
+    if (mounted) context.go('/auth/login');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final email = ref.read(authProvider.notifier).firebaseEmail;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
+      appBar: AppBar(
+        title: const Text('Completa la registrazione'),
+        automaticallyImplyLeading: false,
+        actions: [
+          TextButton(onPressed: _loading ? null : _exit, child: const Text('Esci')),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -59,25 +73,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Tell us about yourself', style: Theme.of(context).textTheme.headlineSmall),
+                Text('Parlaci di te', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 8),
                 Text(
-                  'Admins will review your motivation before your account is active.',
+                  'Gli amministratori leggeranno la tua motivazione.',
                   style: TextStyle(color: Colors.grey[600]),
                 ),
+                if (email != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Account: $email', style: TextStyle(color: Colors.grey[600])),
+                ],
                 const SizedBox(height: 32),
                 TextFormField(
                   controller: _nameCtr,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'First name', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  decoration: const InputDecoration(labelText: 'Nome', border: OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Campo obbligatorio' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _surnameCtr,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'Last name', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  decoration: const InputDecoration(labelText: 'Cognome', border: OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Campo obbligatorio' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -85,11 +103,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   maxLines: 4,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: 'Why do you want to join?',
+                    labelText: 'Perché vuoi entrare nella comunità?',
                     alignLabelWithHint: true,
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Campo obbligatorio' : null,
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 16),
@@ -101,8 +119,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: FilledButton(
                     onPressed: _loading ? null : _submit,
                     child: _loading
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Join'),
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Entra'),
                   ),
                 ),
               ],

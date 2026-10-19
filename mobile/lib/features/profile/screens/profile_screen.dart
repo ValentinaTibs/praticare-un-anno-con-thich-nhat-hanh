@@ -31,7 +31,7 @@ class ProfileScreen extends ConsumerWidget {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await ref.read(authProvider.notifier).logout();
-              if (context.mounted) context.go('/auth/phone');
+              if (context.mounted) context.go('/auth/login');
             },
           ),
         ],
@@ -57,8 +57,8 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 32),
-          if (user.phoneNumber != null)
-            _InfoRow(label: 'Phone', value: user.phoneNumber!),
+          if (user.email != null)
+            _InfoRow(label: 'Email', value: user.email!),
           _InfoRow(label: 'Role', value: user.role),
           if (user.lastConfirmedAt != null)
             _InfoRow(

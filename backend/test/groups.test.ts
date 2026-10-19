@@ -18,11 +18,11 @@ const openCycle = (app: App, headers: Headers) =>
 const closeCycle = (app: App, headers: Headers) =>
   app.inject({ method: 'POST', url: '/api/cycles/close', headers });
 
-async function register(app: App, phoneNumber: string, name: string) {
+async function register(app: App, email: string, name: string) {
   const res = await app.inject({
     method: 'POST',
     url: '/api/auth/register',
-    payload: { idToken: firebaseTokenFor(phoneNumber), name, surname: 'Rossi', motivation: 'Voglio praticare' },
+    payload: { idToken: firebaseTokenFor(email), name, surname: 'Rossi', motivation: 'Voglio praticare' },
   });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.statusCode} ${res.body}`);
   return { authorization: `Bearer ${res.json().accessToken}` };
@@ -47,7 +47,7 @@ describe('Gruppi', () => {
     const superAdmin = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
     const cycle = (await openCycle(app, superAdmin)).json();
 
-    const anna = await register(app, '+393331110001', 'Anna');
+    const anna = await register(app, 'anna@test.local', 'Anna');
 
     expect((await me(app, anna)).group).toMatchObject({ id: cycle.group.id });
   });
@@ -57,11 +57,11 @@ describe('Gruppi', () => {
     const superAdmin = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
 
     await openCycle(app, superAdmin);
-    const anna = await register(app, '+393331110001', 'Anna');
+    const anna = await register(app, 'anna@test.local', 'Anna');
     await closeCycle(app, superAdmin);
 
     await openCycle(app, superAdmin);
-    const marco = await register(app, '+393331110002', 'Marco');
+    const marco = await register(app, 'marco@test.local', 'Marco');
 
     expect((await me(app, anna)).group.id).not.toBe((await me(app, marco)).group.id);
   });

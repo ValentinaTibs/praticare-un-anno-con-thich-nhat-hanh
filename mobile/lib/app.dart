@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'features/auth/auth_notifier.dart';
-import 'features/auth/screens/phone_screen.dart';
-import 'features/auth/screens/otp_screen.dart';
+import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
+import 'features/auth/screens/signup_screen.dart';
+import 'features/auth/screens/verify_email_screen.dart';
 import 'features/main_channel/screens/main_channel_screen.dart';
 import 'features/sharing_channel/screens/sharing_channel_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
@@ -14,30 +15,22 @@ final _routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/auth/phone',
+    initialLocation: '/auth/login',
     redirect: (context, state) {
       final isAuth = authState.status == AuthStatus.authenticated;
       final isLoading = authState.status == AuthStatus.loading;
       final onAuth = state.matchedLocation.startsWith('/auth');
 
       if (isLoading) return null;
-      if (!isAuth && !onAuth) return '/auth/phone';
+      if (!isAuth && !onAuth) return '/auth/login';
       if (isAuth && onAuth) return '/home';
       return null;
     },
     routes: [
-      GoRoute(path: '/auth/phone', builder: (_, __) => const PhoneScreen()),
-      GoRoute(
-        path: '/auth/otp',
-        builder: (_, state) => OtpScreen(phoneNumber: state.extra as String),
-      ),
-      GoRoute(
-        path: '/auth/register',
-        builder: (_, state) {
-          final extra = state.extra as Map<String, String>;
-          return RegisterScreen(phoneNumber: extra['phone']!, otpCode: extra['code']!);
-        },
-      ),
+      GoRoute(path: '/auth/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/auth/signup', builder: (_, __) => const SignupScreen()),
+      GoRoute(path: '/auth/verify-email', builder: (_, __) => const VerifyEmailScreen()),
+      GoRoute(path: '/auth/register', builder: (_, __) => const RegisterScreen()),
       ShellRoute(
         builder: (_, state, child) => _HomeShell(child: child, location: state.matchedLocation),
         routes: [

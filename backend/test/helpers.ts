@@ -6,20 +6,25 @@ export async function createTestApp() {
   return buildApp();
 }
 
-// An idToken that the mocked Firebase (see setup.ts) verifies as this phone number.
-export function firebaseTokenFor(phoneNumber: string) {
-  return `test:${phoneNumber}`;
+// An idToken that the mocked Firebase (see setup.ts) verifies as this email, already verified.
+export function firebaseTokenFor(email: string) {
+  return `test:${email}`;
 }
 
-let phoneCounter = 0;
+// An idToken for an email whose owner has not clicked the verification link yet.
+export function unverifiedFirebaseTokenFor(email: string) {
+  return `unverified:${email}`;
+}
+
+let userCounter = 0;
 
 export async function givenUser(overrides: Partial<Prisma.UserCreateInput> = {}) {
-  phoneCounter += 1;
+  userCounter += 1;
   return prisma.user.create({
     data: {
       name: 'Test',
       surname: 'User',
-      phoneNumber: `+3930000${String(phoneCounter).padStart(5, '0')}`,
+      email: `user${userCounter}@test.local`,
       motivation: 'Testing',
       lastConfirmedAt: new Date(),
       ...overrides,
@@ -36,11 +41,11 @@ export async function givenAdmin(overrides: Partial<Prisma.UserCreateInput> = {}
 }
 
 // Logs in through the real login route, so the token is the one a client would get.
-export async function loginAs(app: Awaited<ReturnType<typeof createTestApp>>, user: { phoneNumber: string }) {
+export async function loginAs(app: Awaited<ReturnType<typeof createTestApp>>, user: { email: string }) {
   const res = await app.inject({
     method: 'POST',
     url: '/api/auth/verify-firebase',
-    payload: { idToken: firebaseTokenFor(user.phoneNumber) },
+    payload: { idToken: firebaseTokenFor(user.email) },
   });
   if (res.statusCode !== 200) throw new Error(`login failed: ${res.statusCode} ${res.body}`);
   return { authorization: `Bearer ${res.json().accessToken}` };
@@ -64,8 +69,8 @@ export async function givenGroup() {
 }
 
 // permanent: banned for good; otherwise removed by an admin and blocked until the next cycle.
-export async function givenBlockedPhone(phoneNumber: string, { permanent }: { permanent: boolean }) {
-  return prisma.bannedPhone.create({ data: { phoneNumber, permanent } });
+export async function givenBlockedEmail(email: string, { permanent }: { permanent: boolean }) {
+  return prisma.bannedEmail.create({ data: { email, permanent } });
 }
 
 // Opens the group's sharing channel directly: the spec allows only scheduled opening, which doesn't exist yet.

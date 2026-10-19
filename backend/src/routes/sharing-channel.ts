@@ -225,7 +225,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 
       const members = await prisma.sharingChannelMember.findMany({
         where: { sharingChannelId: channel.id },
-        include: { user: { select: { id: true, name: true, surname: true, phoneNumber: true } } },
+        include: { user: { select: { id: true, name: true, surname: true, email: true } } },
       });
 
       return reply.send(members);

@@ -16,37 +16,39 @@
 | Super Admin | Come Admin, in più gestisce i cicli di registrazione e promuove/declassa gli Admin |
 
 - Admin e Super Admin usano anche l'app mobile come partecipanti: leggono il Canale Principale ed entrano nel cerchio.
-- Tutti accedono con il **codice SMS**, sia all'app sia al pannello web. Il pannello è riservato agli utenti con ruolo admin o Super Admin.
+- Tutti accedono con **email e password**, sia all'app sia al pannello web. Il pannello è riservato agli utenti con ruolo admin o Super Admin.
 - Un utente diventa admin quando il Super Admin lo promuove. Non servono account separati.
-- Esiste **un solo Super Admin**, creato a mano durante l'installazione. L'account è legato a un **numero di telefono del progetto**. Chi ha quel telefono riceve il codice SMS e può accedere come Super Admin.
+- Esiste **un solo Super Admin**, creato a mano durante l'installazione. L'account è legato a un **indirizzo email del progetto**. Chi conosce la password di quell'account accede come Super Admin. L'account può essere condiviso dalle persone che lo gestiscono.
 
 ## 3. Architettura tecnica
 - **App mobile:** Flutter
 - **Backend:** Node.js + TypeScript, Fastify v4, Zod per la validazione
 - **Database:** PostgreSQL tramite Prisma
-- **Autenticazione:** codice SMS tramite Firebase Phone Authentication. Il backend verifica il token Firebase ed emette i propri JWT (access 15 min, refresh 30 giorni)
+- **Autenticazione:** email e password tramite Firebase Authentication. L'email deve essere verificata. Il backend verifica il token Firebase ed emette i propri JWT (access 15 min, refresh 30 giorni). Firebase invia anche le email di verifica e di reimpostazione della password
 - **Notifiche push e tempo reale:** Firebase Cloud Messaging, più dispositivi per utente
-- **Email:** servizio di invio da scegliere, necessario per gli avvisi alla lista d'attesa
+- **Email:** servizio di invio da scegliere, necessario per gli avvisi alla lista d'attesa. È separato dalle email di accesso, che invia Firebase
 - **Pannello admin:** Flutter Web
 - **Job pianificati:** node-cron
 
 ## 4. Registrazione e accesso
-- Registrazione con nome, cognome, numero di telefono, email e motivazione.
+- Registrazione con nome, cognome, email, password e motivazione.
+- Prima di entrare l'utente deve **confermare l'email** con il link che riceve.
 - La motivazione è utile sia al partecipante, come riflessione personale, sia agli admin, per conoscerlo.
 - La registrazione è possibile solo quando un **ciclo di registrazione** è aperto.
 - L'utente è **attivo subito**; viene marcato come "non ancora revisionato" per gli admin. La revisione della motivazione è informativa, non un blocco.
-- Se l'OTP scade durante la registrazione, l'utente ne richiede uno nuovo e ricomincia. Nessuno stato parziale viene salvato.
+- Se il link di conferma scade, l'utente ne richiede uno nuovo. Il nostro backend non salva nulla finché la registrazione non è completa.
+- Chi ha dimenticato la password la reimposta tramite un link ricevuto via email.
 - Più dispositivi possono essere connessi contemporaneamente.
 
 ### Profilo utente
 - L'utente può modificare da solo nome, cognome e motivazione.
-- Nella prima release il **numero di telefono non si può cambiare**.
+- Nella prima release l'**email non si può cambiare**.
 
 ## 5. Cicli di registrazione e gruppi
 - I cicli sono definiti dagli admin: si imposta una finestra temporale in cui l'app accetta nuove registrazioni.
 - **Solo il Super Admin** apre i cicli di registrazione.
 - All'apertura il Super Admin imposta la **data di chiusura**. Il ciclo si chiude automaticamente a quella data.
-- All'apertura di un ciclo, i numeri bloccati temporaneamente vengono sbloccati.
+- All'apertura di un ciclo, le email bloccate temporaneamente vengono sbloccate.
 - Fuori dal ciclo le nuove registrazioni sono rifiutate; gli utenti esistenti non subiscono effetti.
 - Chi prova a registrarsi a ciclo chiuso vede un messaggio e può iscriversi alla lista d'attesa. Il Super Admin può modificare il testo del messaggio dal pannello web.
 
@@ -77,14 +79,17 @@
 - La sospensione ha effetto immediato, anche sui dispositivi già collegati.
 - Un utente sospeso non entra nei nuovi round di conferma.
 - Alla riattivazione, l'utente è considerato in regola con l'ultimo round di conferma senza fare altro.
-- Alla revoca del ban, l'utente torna attivo e il suo numero esce dall'elenco dei numeri bloccati.
+- Alla revoca del ban, l'utente torna attivo e la sua email esce dall'elenco delle email bloccate.
 
 ### 6.2 Uscita dalla community
-| Caso | Chi lo decide | Account | Numero di telefono |
+| Caso | Chi lo decide | Account | Email |
 |---|---|---|---|
-| **Ban** | Admin | Resta, in stato bannato | Bloccato finché il Super Admin non revoca il ban |
-| **Rimozione** | Admin | Eliminato con tutti i dati | Bloccato fino all'apertura del ciclo successivo |
-| **Cancellazione autonoma** | Utente | Eliminato con tutti i dati | Bloccato fino all'apertura del ciclo successivo |
+| **Ban** | Admin | Resta, in stato bannato | Bloccata finché il Super Admin non revoca il ban |
+| **Rimozione** | Admin | Eliminato con tutti i dati | Bloccata fino all'apertura del ciclo successivo |
+| **Cancellazione autonoma** | Utente | Eliminato con tutti i dati | Bloccata fino all'apertura del ciclo successivo |
+
+- Rimozione e cancellazione autonoma eliminano anche l'**account di accesso in Firebase** (email e password). Il blocco resta comunque, perché è legato all'email.
+- Il blocco vale per il **singolo indirizzo email**. Chi usa un altro indirizzo, anche un alias della stessa casella come nome+altro@gmail.com, può registrarsi di nuovo durante un ciclo aperto.
 
 ### 6.3 Messaggi mostrati agli utenti bloccati
 - L'utente sospeso e l'utente bannato vedono un messaggio dedicato con l'**email di contatto** degli admin, ad esempio admin@laviadellatrasformazione.it.
@@ -156,8 +161,8 @@ Eventi già emersi da considerare:
 - Il testo è scritto e aggiornato dal **Super Admin direttamente sul sito**. Il pannello web non gestisce l'informativa.
 - Il progetto è un **gruppo informale**, non un ente. Il **titolare del trattamento** è quindi una persona fisica del gruppo, indicata nell'informativa con i suoi contatti.
 - L'utente può **cancellare autonomamente** il proprio account dall'app.
-- Alla cancellazione **tutti i dati dell'utente vengono eliminati subito**.
-- Dopo la cancellazione l'utente può registrarsi di nuovo al **ciclo successivo**, come avviene per la rimozione da parte di un admin. Per applicare questa regola il numero di telefono resta nell'elenco dei numeri bloccati fino all'apertura del ciclo successivo.
+- Alla cancellazione **tutti i dati dell'utente vengono eliminati subito**, compreso l'account di accesso in Firebase con email e password.
+- Dopo la cancellazione l'utente può registrarsi di nuovo al **ciclo successivo**, come avviene per la rimozione da parte di un admin. Per applicare questa regola l'email resta nell'elenco delle email bloccate fino all'apertura del ciclo successivo.
 
 ## 12. Requisiti non funzionali
 - **Prima release (MVP):** **26 dicembre 2026**. Per l'MVP si sceglie sempre la soluzione più semplice.
@@ -193,7 +198,7 @@ Funzionalità escluse dalla prima release e già decise per il futuro.
 | Canale di Condivisione | Programmazione del cerchio diversa per ogni gruppo | Sezione 9 |
 | Canale di Condivisione | Rimozione automatica del post di annuncio dopo la chiusura del cerchio | Sezione 9 |
 | Amministrazione | Funzioni admin anche nell'app mobile | Sezione 12 |
-| Profilo | Cambio del numero di telefono | Sezione 4 |
+| Profilo | Cambio dell'email | Sezione 4 |
 | Notifiche | Definizione completa degli eventi e dei canali di notifica | Sezione 10 |
 
 ### Possono slittare se i tempi stringono
@@ -224,18 +229,20 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Storico al rientro nel cerchio:** il codice restituisce tutti i messaggi a chi rientra. Le specifiche chiedono solo quelli successivi al rientro.
 - **Numero di partecipanti:** il codice mostra l'elenco membri solo agli admin e non espone il conteggio agli utenti.
 - **Cancellazione account:** non esiste una funzione per cancellare il proprio account.
+- **Account Firebase alla rimozione:** la rimozione da parte di un admin elimina l'utente dal database ma lascia il suo account di accesso in Firebase.
 - **Informativa privacy:** la registrazione non chiede di accettarla.
 - **Chiusura anticipata del cerchio:** il codice permette a un admin di chiudere il cerchio in anticipo. Le specifiche lo escludono.
 - **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio.
 - **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Manca la motivazione.
 - **Pannello web di amministrazione:** non esiste. Le schermate admin attuali sono solo nell'app mobile.
-- **Accesso al pannello web:** l'accesso con codice SMS esiste già. Va costruito il pannello e il controllo del ruolo all'ingresso.
+- **Già allineato:** l'accesso usa email e password tramite Firebase, con email verificata obbligatoria, sia nel backend sia nell'app. Il modello utente ha il campo email e non ha più il numero di telefono.
+- **Accesso al pannello web:** il backend gestisce già l'accesso con email e password. Va costruito il pannello e il controllo del ruolo all'ingresso.
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
 - **Revoca del ban:** il codice non prevede di revocare un ban.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
-- **App mobile e backend disallineati:** l'app usa ancora il vecchio flusso SMS e Socket.IO. Il backend si aspetta il token di Firebase Phone Authentication e usa solo Firebase Cloud Messaging. Oggi l'accesso dall'app non può funzionare.
+- **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
 - **Gruppi:** il codice non lega gli utenti al ciclo in cui si sono registrati. Round di conferma, Canale Principale e cerchio sono unici per tutti.
 - **Lista d'attesa:** non esiste. A ciclo chiuso il codice rifiuta semplicemente la registrazione.
 - **Sequenza unica dei post:** il codice programma ogni post a una data fissa. Le specifiche chiedono un giorno relativo all'inizio del gruppo.
-- **Email:** il modello utente non ha un campo email e il backend non invia email.
+- **Invio di email:** il backend non invia email, quindi mancano gli avvisi alla lista d'attesa.
 - **Messaggi modificabili:** non esiste un modo per far modificare al Super Admin i testi per sospesi e bannati.

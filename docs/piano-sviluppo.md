@@ -8,7 +8,7 @@
 - Mancano **10 settimane** al rilascio.
 - Il backend esistente è piccolo e ben impostato, ma va esteso parecchio: i **gruppi** toccano quasi tutte le funzionalità.
 - Il **pannello web** va costruito da zero.
-- L'**app mobile** oggi non riesce ad accedere al backend, perché i due usano flussi di accesso diversi. Va riallineata per prima cosa.
+- L'**app mobile** e il backend usano già lo stesso accesso, con email e password tramite Firebase. Nell'app resta da eliminare il vecchio codice di Socket.IO.
 - Il vincolo più rigido è esterno: gli **store**. Per stare tranquilli l'app va inviata in revisione entro **venerdì 11 dicembre**, prima del rallentamento natalizio delle revisioni Apple.
 
 ## Calendario
@@ -37,18 +37,18 @@ Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipend
 - **Account Google Play** personale del referente, con verifica dell'identità. Prima della pubblicazione richiede un test chiuso con 12 tester per 14 giorni.
 - **Hosting** per backend, database e pannello web.
 - **Servizio di invio email** e casella admin@laviadellatrasformazione.it.
-- **Progetto Firebase** con accesso tramite SMS attivo. Vanno verificati piano e costi degli SMS.
+- **Progetto Firebase** con accesso tramite email e password attivo. I modelli delle email di verifica e di reimpostazione della password vanno tradotti in italiano.
 - **Pagina dell'informativa privacy** sul sito laviadellatrasformazione.it.
-- **Numero di telefono del progetto** per l'account del Super Admin.
+- **Indirizzo email del progetto** per l'account del Super Admin.
 
 ### Fase 1 — Fondamenta (settimane 1–2)
 Va fatta per prima, perché tutto il resto dipende da qui.
 
-- **Riallineare l'accesso.** L'app usa Firebase per il codice SMS e invia il token al backend, come il backend già si aspetta. Si elimina il vecchio codice di Socket.IO dall'app.
+- **Riallineare l'accesso.** Fatto: l'app accede con email e password tramite Firebase e invia il token al backend. Resta da eliminare il vecchio codice di Socket.IO dall'app.
 - **Gruppi.** Ogni utente appartiene al gruppo del ciclo in cui si è registrato.
 - **Cicli.** Il Super Admin imposta la data di chiusura e il ciclo si chiude da solo. L'apertura crea il nuovo gruppo.
 - **Lista d'attesa.** A ciclo chiuso la persona compila tutti i dati, email compresa. All'apertura del ciclo entra nel nuovo gruppo.
-- **Registrazione.** Si aggiungono l'email e l'accettazione dell'informativa privacy.
+- **Registrazione.** Si aggiunge l'accettazione dell'informativa privacy. L'email c'è già, perché è anche il dato di accesso.
 
 ### Fase 2 — Funzionalità del backend (settimane 3–5)
 - **Canale Principale.** Sequenza unica di post programmati per giorno dall'inizio del gruppo. Ogni gruppo vede la sequenza secondo la propria data di inizio.
@@ -56,13 +56,13 @@ Va fatta per prima, perché tutto il resto dipende da qui.
 - **Cerchio.** Un cerchio per gruppo, con programmazione settimanale comune e durata fissa. Apertura e chiusura automatiche, annuncio nel Canale Principale, solo testo. Al rientro si vedono solo i messaggi nuovi. Gli utenti vedono il numero di partecipanti. Si eliminano l'apertura e la chiusura manuali.
 - **Stati dell'utente.** Revoca del ban da parte del Super Admin.
 - **Email.** Avviso via email a chi è in lista d'attesa quando si apre il ciclo.
-- **Cancellazione account.** L'utente cancella il proprio account dall'app. Il numero resta bloccato fino al ciclo successivo.
+- **Cancellazione account.** L'utente cancella il proprio account dall'app. Viene eliminato anche il suo account di accesso in Firebase, come nella rimozione da parte di un admin. L'email resta bloccata fino al ciclo successivo.
 - **Testi.** Tutti i messaggi in italiano. Il Super Admin può modificare i testi per sospesi, bannati e ciclo chiuso.
 
 ### Fase 3 — Pannello web (settimane 3–7)
 Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile.
 
-1. Accesso con codice SMS, riservato ad admin e Super Admin.
+1. Accesso con email e password, riservato ad admin e Super Admin.
 2. Utenti e gruppi: elenco, revisione, sospensione, riattivazione, ban, revoca del ban, rimozione.
 3. Sequenza dei post del Canale Principale.
 4. Round di conferma per gruppo.
@@ -71,7 +71,7 @@ Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile.
 7. Solo Super Admin: cicli di registrazione, ruoli, testi dei messaggi.
 
 ### Fase 4 — App mobile (settimane 1–7)
-- Accesso e registrazione con email e informativa privacy.
+- Accesso e registrazione con email e password, email verificata e informativa privacy.
 - Iscrizione alla lista d'attesa a ciclo chiuso.
 - Canale Principale del proprio gruppo, in sola lettura.
 - Ingresso al cerchio dal post di annuncio, con il numero di partecipanti.
@@ -89,7 +89,7 @@ Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile.
 
 ### Fase 6 — Pubblicazione (settimane 8–10)
 - Invio in revisione agli store **entro venerdì 11 dicembre**.
-- Per la revisione Apple serve un modo per entrare senza un vero SMS. Firebase permette di configurare **numeri di telefono di prova** con un codice fisso.
+- Per la revisione Apple serve un **account di prova** con email e password, da indicare nella richiesta di revisione.
 - Schede degli store: descrizione, schermate, link all'informativa privacy, dichiarazione dei dati raccolti.
 - Messa in produzione di backend e pannello web.
 - Pubblicazione il 26 dicembre, che è sabato e festivo. Gli store permettono di programmare la pubblicazione in anticipo.
@@ -101,7 +101,7 @@ Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile.
 |---|---|---|
 | Account store in ritardo | Non si può inviare l'app in revisione | Scegliere subito il referente e aprire gli account personali |
 | Test chiuso Android in ritardo o con meno di 12 tester | Google non concede la pubblicazione | Trovare i tester ora e avviare il test entro il 20 novembre, anche con una versione incompleta |
-| Rifiuto in revisione | Una o due settimane perse | Inviare entro l'11 dicembre e preparare l'accesso di prova |
+| Rifiuto in revisione | Una o due settimane perse | Inviare entro l'11 dicembre e preparare l'account di prova |
 | Revisioni lente a Natale | Pubblicazione dopo il 26 dicembre | Inviare in anticipo e programmare la pubblicazione per il 26 |
 | I gruppi toccano tutto | Ritardi a catena | Farli per primi, nella fase 1 |
 | Pannello web costruito da zero | Ritardo sulle funzioni admin | Partire dalle funzioni indispensabili e lasciare in fondo quelle che possono slittare |
@@ -116,4 +116,4 @@ La cancellazione dell'account **non può slittare**, perché gli store la richie
 
 ## Prossimi passi
 1. Il gruppo crea la mail di progetto, sceglie il referente, apre gli account store e sceglie l'hosting.
-2. Si parte con la fase 1: modello dati dei gruppi e riallineamento dell'accesso nell'app.
+2. Si parte con la fase 1: modello dati dei gruppi ed eliminazione di Socket.IO dall'app.

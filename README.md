@@ -21,7 +21,7 @@ App per i partecipanti di un percorso di pratica della community "La via della t
 - **Node.js** 20.6 o successivo. Serve il supporto all'opzione `--env-file`.
 - **PostgreSQL** 14 o successivo. In alternativa, **Docker** per avviarlo in un container.
 - **Flutter** con Dart 3.3 o successivo.
-- Un **progetto Firebase** con accesso tramite telefono e Cloud Messaging attivi. Va chiesto al referente del progetto.
+- Un **progetto Firebase** con accesso tramite email e password e Cloud Messaging attivi. Va chiesto al referente del progetto.
 - Per iOS: un Mac con Xcode.
 
 ## Backend
@@ -90,7 +90,10 @@ Nelle esecuzioni successive basta `npm run db:migrate`.
 npm run db:seed
 ```
 
-Lo script crea un Super Admin con un numero di telefono segnaposto. Per accedere davvero, cambia il numero in `prisma/seed.ts` prima di lanciarlo. In alternativa, configura in Firebase un numero di telefono di prova con un codice fisso.
+Lo script crea un Super Admin con l'email segnaposto `superadmin@example.com`. Per accedere davvero:
+
+1. Cambia l'email in `prisma/seed.ts` prima di lanciarlo.
+2. Crea in Firebase un account con la stessa email e confermala. Il modo più semplice è dall'app: scegli *Crea un account* e apri il link che arriva via email. Gli account aggiunti a mano nella console Firebase, in *Authentication*, poi *Users*, nascono non verificati: al primo accesso dall'app si apre la schermata di conferma, tocca *Invia di nuovo* e apri il link.
 
 ### 6. Avviare il server
 
@@ -117,7 +120,7 @@ L'app esce solo per Android e iOS. L'identificativo, uguale sulle due piattaform
 
 ### 1. Configurazione Firebase
 
-Firebase serve per le notifiche push e, più avanti, per l'accesso con codice SMS. Finché il progetto Firebase non esiste, l'app si avvia lo stesso, senza notifiche push.
+Firebase serve per l'accesso con email e password e per le notifiche push. Finché il progetto Firebase non esiste, l'app si avvia lo stesso, ma senza accesso e senza notifiche push.
 
 Quando il progetto sarà pronto, la configurazione si genera con `flutterfire configure` e si salva nel repository. Quei file contengono chiavi pubbliche del client, non segreti.
 

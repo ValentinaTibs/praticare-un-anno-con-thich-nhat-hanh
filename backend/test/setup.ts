@@ -2,13 +2,15 @@ import { vi, beforeEach, afterAll } from 'vitest';
 import { prisma } from '../src/config/prisma.js';
 
 // ── Firebase (external boundary) ──────────────────────────────────────────────
-// Phone auth: a token "test:<phone>" verifies as that phone number.
+// Email auth: a token "test:<email>" verifies as that email, already verified;
+// "unverified:<email>" as that email before the user clicked the verification link.
 // Push: every send succeeds without reaching Google.
 vi.mock('../src/config/firebase.js', () => ({
   firebaseAuth: {
     verifyIdToken: vi.fn(async (idToken: string) => {
-      if (!idToken.startsWith('test:')) throw new Error('Invalid Firebase token');
-      return { phone_number: idToken.slice('test:'.length) };
+      if (idToken.startsWith('test:')) return { email: idToken.slice('test:'.length), email_verified: true };
+      if (idToken.startsWith('unverified:')) return { email: idToken.slice('unverified:'.length), email_verified: false };
+      throw new Error('Invalid Firebase token');
     }),
   },
   fcm: {
