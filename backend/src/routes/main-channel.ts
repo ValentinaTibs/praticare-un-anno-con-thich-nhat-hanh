@@ -79,7 +79,7 @@ export async function mainChannelRoutes(app: FastifyInstance) {
       });
 
       if (!isScheduled) {
-        await pushToAll('New post', content.slice(0, 100), { type: 'main_channel:new_post' });
+        await pushToAll('Nuovo post', content.slice(0, 100), { type: 'main_channel:new_post' });
       }
 
       return reply.status(201).send(post);
@@ -113,7 +113,7 @@ export async function mainChannelRoutes(app: FastifyInstance) {
       });
 
       if (publishNow) {
-        await pushToAll('New post', post.content.slice(0, 100), { type: 'main_channel:new_post' });
+        await pushToAll('Nuovo post', post.content.slice(0, 100), { type: 'main_channel:new_post' });
       }
 
       return reply.send(post);

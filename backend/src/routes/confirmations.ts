@@ -20,7 +20,7 @@ export async function confirmationRoutes(app: FastifyInstance) {
     });
 
     if (!pending) {
-      return reply.status(404).send({ message: 'No pending confirmation request' });
+      return reply.status(404).send({ message: 'Nessuna richiesta di conferma in sospeso' });
     }
 
     await prisma.$transaction([

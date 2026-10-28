@@ -28,17 +28,17 @@ export async function authRoutes(app: FastifyInstance) {
 
       const banned = await prisma.bannedEmail.findUnique({ where: { email } });
       if (banned?.permanent) {
-        return reply.status(403).send({ message: 'Email permanently banned.', contact: env.ADMIN_CONTACT_EMAIL });
+        return reply.status(403).send({ message: 'Email bannata in modo permanente.', contact: env.ADMIN_CONTACT_EMAIL });
       }
 
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) return reply.send({ status: 'register', email });
 
       if (user.status === 'banned') {
-        return reply.status(403).send({ message: 'Account banned.', contact: env.ADMIN_CONTACT_EMAIL });
+        return reply.status(403).send({ message: 'Account bannato.', contact: env.ADMIN_CONTACT_EMAIL });
       }
       if (user.status === 'suspended') {
-        return reply.status(403).send({ message: 'Account suspended.' });
+        return reply.status(403).send({ message: 'Account sospeso.' });
       }
 
       const { accessToken, refreshToken } = await issueTokens(app, user.id, user.role);
@@ -56,7 +56,7 @@ export async function authRoutes(app: FastifyInstance) {
     const banned = await prisma.bannedEmail.findUnique({ where: { email } });
     if (banned?.permanent) {
       return reply.status(403).send({
-        message: 'This email has been permanently banned.',
+        message: 'Questa email è stata bannata in modo permanente.',
         contact: env.ADMIN_CONTACT_EMAIL,
       });
     }
@@ -67,17 +67,17 @@ export async function authRoutes(app: FastifyInstance) {
       if (banned && !banned.permanent) {
         const cycle = await findOpenCycle();
         if (!cycle) {
-          return reply.status(403).send({ message: 'Registrations are currently closed.', code: 'registrations_closed' });
+          return reply.status(403).send({ message: 'Le iscrizioni sono chiuse in questo momento.', code: 'registrations_closed' });
         }
       }
       return reply.status(200).send({ status: 'register', email });
     }
 
     if (user.status === 'banned') {
-      return reply.status(403).send({ message: 'Account banned.', contact: env.ADMIN_CONTACT_EMAIL });
+      return reply.status(403).send({ message: 'Account bannato.', contact: env.ADMIN_CONTACT_EMAIL });
     }
     if (user.status === 'suspended') {
-      return reply.status(403).send({ message: 'Account suspended. Please contact an admin to restore access.' });
+      return reply.status(403).send({ message: 'Account sospeso. Contatta un amministratore per riattivarlo.' });
     }
 
     const { accessToken, refreshToken } = await issueTokens(app, user.id, user.role);
@@ -94,18 +94,18 @@ export async function authRoutes(app: FastifyInstance) {
     const bannedEmail = await prisma.bannedEmail.findUnique({ where: { email } });
     if (bannedEmail?.permanent) {
       return reply.status(403).send({
-        message: 'This email has been permanently banned.',
+        message: 'Questa email è stata bannata in modo permanente.',
         contact: env.ADMIN_CONTACT_EMAIL,
       });
     }
 
     const cycle = await findOpenCycle();
     if (!cycle) {
-      return reply.status(403).send({ message: 'Registrations are currently closed.', code: 'registrations_closed' });
+      return reply.status(403).send({ message: 'Le iscrizioni sono chiuse in questo momento.', code: 'registrations_closed' });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) return reply.status(409).send({ message: 'Email already registered' });
+    if (existing) return reply.status(409).send({ message: 'Email già registrata' });
 
     if (bannedEmail) {
       await prisma.bannedEmail.delete({ where: { email } });
@@ -129,7 +129,7 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     if (!stored || stored.expiresAt < new Date()) {
-      return reply.status(401).send({ message: 'Invalid or expired refresh token' });
+      return reply.status(401).send({ message: 'Sessione non valida o scaduta' });
     }
 
     await prisma.refreshToken.delete({ where: { id: stored.id } });
@@ -149,7 +149,7 @@ export async function authRoutes(app: FastifyInstance) {
     await prisma.refreshToken.deleteMany({
       where: { userId: request.user.id, token: refreshToken },
     });
-    return reply.send({ message: 'Logged out' });
+    return reply.send({ message: 'Disconnesso' });
   });
 
   // POST /api/auth/devices — register a device FCM token
@@ -160,7 +160,7 @@ export async function authRoutes(app: FastifyInstance) {
       update: { userId: request.user.id },
       create: { userId: request.user.id, fcmToken },
     });
-    return reply.send({ message: 'Device registered' });
+    return reply.send({ message: 'Dispositivo registrato' });
   });
 
   // DELETE /api/auth/devices — unregister a device FCM token on logout
@@ -169,7 +169,7 @@ export async function authRoutes(app: FastifyInstance) {
     await prisma.userDevice.deleteMany({
       where: { userId: request.user.id, fcmToken },
     });
-    return reply.send({ message: 'Device unregistered' });
+    return reply.send({ message: 'Dispositivo rimosso' });
   });
 }
 
@@ -179,9 +179,9 @@ async function emailFromToken(idToken: string, reply: FastifyReply): Promise<str
     return await verifyFirebaseToken(idToken);
   } catch (err) {
     if (err instanceof EmailNotVerifiedError) {
-      reply.status(403).send({ message: 'Email not verified.', code: 'email_not_verified' });
+      reply.status(403).send({ message: 'Email non verificata.', code: 'email_not_verified' });
     } else {
-      reply.status(401).send({ message: 'Invalid Firebase token' });
+      reply.status(401).send({ message: 'Token di accesso non valido' });
     }
     return null;
   }

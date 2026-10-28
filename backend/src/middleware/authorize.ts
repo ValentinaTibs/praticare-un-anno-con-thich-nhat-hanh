@@ -11,7 +11,7 @@ export function authorize(minimumRole: Role) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const userRole = request.user?.role as Role;
     if (!userRole || ROLE_RANK[userRole] < ROLE_RANK[minimumRole]) {
-      return reply.status(403).send({ message: 'Insufficient permissions' });
+      return reply.status(403).send({ message: 'Permessi insufficienti' });
     }
   };
 }

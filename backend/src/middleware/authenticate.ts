@@ -33,22 +33,22 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     });
 
     if (!dbUser) {
-      return reply.status(401).send({ message: 'User not found' });
+      return reply.status(401).send({ message: 'Utente non trovato' });
     }
 
     if (dbUser.status === UserStatus.suspended) {
-      return reply.status(403).send({ message: 'Account suspended. Please contact an admin to restore access.' });
+      return reply.status(403).send({ message: 'Account sospeso. Contatta un amministratore per riattivarlo.' });
     }
 
     if (dbUser.status === UserStatus.banned) {
       return reply.status(403).send({
-        message: 'Account banned.',
+        message: 'Account bannato.',
         contact: env.ADMIN_CONTACT_EMAIL,
       });
     }
 
     request.user = dbUser;
   } catch {
-    return reply.status(401).send({ message: 'Unauthorized' });
+    return reply.status(401).send({ message: 'Non autorizzato' });
   }
 }

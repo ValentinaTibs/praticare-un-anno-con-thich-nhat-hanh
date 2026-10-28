@@ -33,8 +33,8 @@ async function checkChannel(channel: { id: string; groupId: string; scheduledClo
   if (now >= warnTime && now < warnWindowEnd) {
     await pushToGroup(
       channel.groupId,
-      'Sharing channel closing soon',
-      `The sharing channel closes in ${env.SHARING_CHANNEL_WARN_MINUTES} minutes`,
+      'Il canale di condivisione sta per chiudere',
+      `Il canale di condivisione chiude tra ${env.SHARING_CHANNEL_WARN_MINUTES} minuti`,
       { type: 'sharing_channel:closing_soon', channelId: channel.id },
     );
   }

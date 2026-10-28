@@ -53,12 +53,12 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
   // POST /api/sharing-channel/join
   app.post('/join', { preHandler: authenticate }, async (request, reply) => {
     const channel = await findOpenChannel(request);
-    if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
+    if (!channel) return reply.status(404).send({ message: 'Il canale di condivisione non è aperto' });
 
     const existing = await prisma.sharingChannelMember.findFirst({
       where: { sharingChannelId: channel.id, userId: request.user.id },
     });
-    if (existing) return reply.status(409).send({ message: 'Already joined' });
+    if (existing) return reply.status(409).send({ message: 'Partecipi già alla sessione' });
 
     await prisma.sharingChannelMember.create({
       data: { sharingChannelId: channel.id, userId: request.user.id },
@@ -72,8 +72,8 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 
     await pushToChannelMembers(
       channel.id,
-      'New participant',
-      'Someone joined the sharing session',
+      'Nuovo partecipante',
+      'Qualcuno è entrato nella sessione di condivisione',
       { type: 'sharing_channel:member_joined', channelId: channel.id },
     );
 
@@ -83,19 +83,19 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
   // DELETE /api/sharing-channel/leave
   app.delete('/leave', { preHandler: authenticate }, async (request, reply) => {
     const channel = await findOpenChannel(request);
-    if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
+    if (!channel) return reply.status(404).send({ message: 'Il canale di condivisione non è aperto' });
 
     const member = await prisma.sharingChannelMember.findFirst({
       where: { sharingChannelId: channel.id, userId: request.user.id },
     });
-    if (!member) return reply.status(404).send({ message: 'Not a member of the sharing channel' });
+    if (!member) return reply.status(404).send({ message: 'Non partecipi al canale di condivisione' });
 
     await prisma.sharingChannelMember.delete({ where: { id: member.id } });
 
     await pushToChannelMembers(
       channel.id,
-      'Participant left',
-      'Someone left the sharing session',
+      'Un partecipante è uscito',
+      'Qualcuno è uscito dalla sessione di condivisione',
       { type: 'sharing_channel:member_left', channelId: channel.id },
     );
 
@@ -105,12 +105,12 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
   // GET /api/sharing-channel/posts — joined members only
   app.get('/posts', { preHandler: authenticate }, async (request, reply) => {
     const channel = await findOpenChannel(request);
-    if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
+    if (!channel) return reply.status(404).send({ message: 'Il canale di condivisione non è aperto' });
 
     const member = await prisma.sharingChannelMember.findFirst({
       where: { sharingChannelId: channel.id, userId: request.user.id },
     });
-    if (!member) return reply.status(403).send({ message: 'Join the channel first' });
+    if (!member) return reply.status(403).send({ message: 'Prima entra nel canale' });
 
     const posts = await prisma.sharingChannelPost.findMany({
       where: { sharingChannelId: channel.id },
@@ -126,12 +126,12 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
     const { content, mediaUrl } = postBody.parse(request.body);
 
     const channel = await findOpenChannel(request);
-    if (!channel) return reply.status(404).send({ message: 'Sharing channel is not open' });
+    if (!channel) return reply.status(404).send({ message: 'Il canale di condivisione non è aperto' });
 
     const member = await prisma.sharingChannelMember.findFirst({
       where: { sharingChannelId: channel.id, userId: request.user.id },
     });
-    if (!member) return reply.status(403).send({ message: 'Join the channel first' });
+    if (!member) return reply.status(403).send({ message: 'Prima entra nel canale' });
 
     const post = await prisma.sharingChannelPost.create({
       data: { sharingChannelId: channel.id, authorId: request.user.id, content, mediaUrl },
@@ -160,8 +160,8 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 
       await pushToChannelMembers(
         post.sharingChannelId,
-        'Post removed',
-        'A post was removed by an admin',
+        'Post rimosso',
+        'Un amministratore ha rimosso un post',
         { type: 'sharing_channel:post_deleted', channelId: post.sharingChannelId },
       );
 
@@ -177,10 +177,10 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
       const { scheduledClosedAt } = openBody.parse(request.body);
 
       const groupId = groupIdFor(request);
-      if (!groupId) return reply.status(400).send({ message: 'Choose a group with ?groupId=' });
+      if (!groupId) return reply.status(400).send({ message: 'Scegli un gruppo con ?groupId=' });
 
       const existing = await findOpenChannel(request);
-      if (existing) return reply.status(409).send({ message: 'Sharing channel is already open' });
+      if (existing) return reply.status(409).send({ message: 'Il canale di condivisione è già aperto' });
 
       const channel = await prisma.sharingChannel.create({
         data: {
@@ -192,7 +192,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
         },
       });
 
-      await pushToGroup(groupId, 'Sharing channel opened', 'Tap to join the sharing session', {
+      await pushToGroup(groupId, 'Canale di condivisione aperto', 'Tocca per entrare nella sessione di condivisione', {
         type: 'sharing_channel:opened',
         channelId: channel.id,
       });
@@ -207,11 +207,11 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
     { preHandler: [authenticate, authorize('admin')] },
     async (request, reply) => {
       const channel = await findOpenChannel(request);
-      if (!channel) return reply.status(404).send({ message: 'No open sharing channel' });
+      if (!channel) return reply.status(404).send({ message: 'Nessun canale di condivisione aperto' });
 
       await closeChannel(channel.id);
 
-      return reply.send({ message: 'Sharing channel closed' });
+      return reply.send({ message: 'Canale di condivisione chiuso' });
     },
   );
 
@@ -234,7 +234,7 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 }
 
 export async function closeChannel(channelId: string) {
-  await pushToChannelMembers(channelId, 'Sharing channel closed', 'The session has ended', {
+  await pushToChannelMembers(channelId, 'Canale di condivisione chiuso', 'La sessione è terminata', {
     type: 'sharing_channel:closed',
     channelId,
   });

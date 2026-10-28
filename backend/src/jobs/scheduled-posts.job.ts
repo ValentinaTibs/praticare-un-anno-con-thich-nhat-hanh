@@ -18,7 +18,7 @@ export function startScheduledPostsJob() {
         data: { publishedAt: new Date() },
       });
 
-      await pushToAll('New post', post.content.slice(0, 100), { type: 'main_channel:new_post' });
+      await pushToAll('Nuovo post', post.content.slice(0, 100), { type: 'main_channel:new_post' });
     }
   });
 }

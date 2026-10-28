@@ -27,7 +27,7 @@ export async function issueConfirmationRequests() {
       },
     });
 
-    await pushToUser(user.id, 'Action required', 'Please confirm your participation');
+    await pushToUser(user.id, 'Azione richiesta', 'Conferma la tua partecipazione');
   }
 }
 

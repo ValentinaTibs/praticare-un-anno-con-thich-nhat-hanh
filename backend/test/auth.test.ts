@@ -185,7 +185,7 @@ describe('POST /api/auth/register', () => {
     const res = await register(app, 'anna@test.local');
 
     expect(res.statusCode).toBe(409);
-    expect(res.json()).toMatchObject({ message: 'Email already registered' });
+    expect(res.json()).toMatchObject({ message: 'Email già registrata' });
   });
 
   it('registrarsi due volte con la stessa email dà 409 la seconda volta', async () => {

@@ -35,6 +35,47 @@ describe('Gestione utenti da parte degli admin', () => {
     expect(login.json()).toMatchObject({ contact: 'admin@example.com' });
   });
 
+  it('un admin non può riattivare né sospendere un utente bannato', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser();
+    await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/ban`, headers });
+
+    const reactivate = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/reactivate`, headers });
+    expect(reactivate.statusCode).toBe(409);
+
+    const suspend = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/suspend`, headers });
+    expect(suspend.statusCode).toBe(409);
+
+    expect((await verifyFirebase(app, target.email)).statusCode).toBe(403);
+  });
+
+  it('solo il Super Admin può revocare il ban, e l\'utente torna ad accedere', async () => {
+    const app = await createTestApp();
+    const target = await givenUser();
+    const asAdmin = await loginAs(app, await givenAdmin());
+    await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/ban`, headers: asAdmin });
+
+    const denied = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/unban`, headers: asAdmin });
+    expect(denied.statusCode).toBe(403);
+
+    const asSuperAdmin = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
+    const allowed = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/unban`, headers: asSuperAdmin });
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.json()).toMatchObject({ status: 'active' });
+
+    expect((await verifyFirebase(app, target.email)).statusCode).toBe(200);
+  });
+
+  it('non si può revocare il ban a un utente che non è bannato', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
+    const target = await givenUser();
+
+    const unban = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/unban`, headers });
+    expect(unban.statusCode).toBe(409);
+  });
+
   it('un utente rimosso sparisce e la sua email è bloccata fino al prossimo ciclo', async () => {
     const app = await createTestApp();
     const headers = await loginAs(app, await givenAdmin());
@@ -48,7 +89,7 @@ describe('Gestione utenti da parte degli admin', () => {
 
     const login = await verifyFirebase(app, target.email);
     expect(login.statusCode).toBe(403);
-    expect(login.json().message).toMatch(/closed/i);
+    expect(login.json().message).toMatch(/chiuse/i);
   });
 
   it('un admin segna un nuovo utente come esaminato', async () => {

@@ -38,9 +38,17 @@ export async function buildApp() {
     const invalidInput = error instanceof ZodError;
     const statusCode = notFound ? 404 : invalidInput ? 400 : error.statusCode ?? 500;
     app.log.error(error);
+    // The message reaches the app's users: internal details stay in the log.
+    const message = notFound
+      ? 'Elemento non trovato'
+      : invalidInput
+        ? 'Dati non validi'
+        : statusCode >= 500
+          ? 'Errore interno del server'
+          : error.message;
     reply.status(statusCode).send({
       error: error.name,
-      message: error.message,
+      message,
       statusCode,
     });
   });

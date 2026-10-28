@@ -28,13 +28,13 @@ export async function cycleRoutes(app: FastifyInstance) {
     const closesAt = new Date(scheduledClosedAt);
     const openedAt = new Date();
     if (closesAt <= openedAt) {
-      return reply.status(400).send({ message: 'The closing date must be in the future' });
+      return reply.status(400).send({ message: 'La data di chiusura deve essere nel futuro' });
     }
 
     // A cycle past its date may still be marked open if the job has not run yet
     await closeExpiredCycles();
     const existing = await prisma.registrationCycle.findFirst({ where: { status: 'open' } });
-    if (existing) return reply.status(409).send({ message: 'A registration cycle is already open' });
+    if (existing) return reply.status(409).send({ message: 'C\'è già un ciclo di iscrizioni aperto' });
 
     // Unblock emails that were only temporarily banned (removed users)
     await prisma.bannedEmail.deleteMany({ where: { permanent: false } });
@@ -57,7 +57,7 @@ export async function cycleRoutes(app: FastifyInstance) {
   // POST /api/cycles/close — super_admin only, closes the cycle before its date
   app.post('/close', { preHandler }, async (_request, reply) => {
     const cycle = await findOpenCycle();
-    if (!cycle) return reply.status(404).send({ message: 'No open registration cycle' });
+    if (!cycle) return reply.status(404).send({ message: 'Nessun ciclo di iscrizioni aperto' });
 
     const updated = await prisma.registrationCycle.update({
       where: { id: cycle.id },
