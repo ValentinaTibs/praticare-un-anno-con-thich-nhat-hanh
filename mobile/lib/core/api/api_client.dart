@@ -65,7 +65,10 @@ class ApiClient {
 
   ApiException _toApiException(DioException e) {
     final data = e.response?.data;
-    final message = data is Map ? (data['message'] ?? 'An error occurred') : 'An error occurred';
+    final fallback = e.response == null
+        ? 'Impossibile contattare il server. Controlla la connessione.'
+        : 'Si è verificato un errore.';
+    final message = data is Map ? (data['message'] ?? fallback) : fallback;
     final contact = data is Map ? data['contact'] as String? : null;
     final code = data is Map ? data['code'] as String? : null;
     return ApiException(

@@ -72,7 +72,7 @@ class _PostCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        author != null ? author.fullName : 'Deleted user',
+                        author != null ? author.fullName : 'Utente eliminato',
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(

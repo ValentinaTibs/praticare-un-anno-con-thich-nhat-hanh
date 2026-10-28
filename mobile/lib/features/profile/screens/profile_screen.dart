@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../auth/auth_notifier.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/models/confirmation_request.dart';
+import '../../../core/models/user.dart';
 
 final _confirmationProvider = FutureProvider<ConfirmationRequest?>((ref) async {
   final api = ref.watch(apiClientProvider);
@@ -25,10 +26,11 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Profilo'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Esci',
             onPressed: () async {
               await ref.read(authProvider.notifier).logout();
               if (context.mounted) context.go('/auth/login');
@@ -52,17 +54,17 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 Text('${user.name} ${user.surname}', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 4),
-                _StatusChip(status: user.status),
+                _StatusChip(user: user),
               ],
             ),
           ),
           const SizedBox(height: 32),
           if (user.email != null)
             _InfoRow(label: 'Email', value: user.email!),
-          _InfoRow(label: 'Role', value: user.role),
+          _InfoRow(label: 'Ruolo', value: user.roleLabel),
           if (user.lastConfirmedAt != null)
             _InfoRow(
-              label: 'Last confirmed',
+              label: 'Ultima conferma',
               value: DateFormat('d MMM yyyy').format(user.lastConfirmedAt!.toLocal()),
             ),
           const SizedBox(height: 24),
@@ -78,19 +80,19 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
+  final User user;
+  const _StatusChip({required this.user});
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      'active' => ('Active', Colors.green),
-      'suspended' => ('Suspended', Colors.orange),
-      'banned' => ('Banned', Colors.red),
-      _ => (status, Colors.grey),
+    final color = switch (user.status) {
+      'active' => Colors.green,
+      'suspended' => Colors.orange,
+      'banned' => Colors.red,
+      _ => Colors.grey,
     };
     return Chip(
-      label: Text(label, style: const TextStyle(color: Colors.white)),
+      label: Text(user.statusLabel, style: const TextStyle(color: Colors.white)),
       backgroundColor: color,
       padding: const EdgeInsets.symmetric(horizontal: 4),
     );
@@ -132,20 +134,20 @@ class _ConfirmationBanner extends ConsumerWidget {
             Row(children: [
               Icon(Icons.warning_amber, color: Theme.of(context).colorScheme.error),
               const SizedBox(width: 8),
-              Text('Confirmation required', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.error)),
+              Text('Conferma richiesta', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.error)),
             ]),
             const SizedBox(height: 8),
-            Text('Please confirm your participation by ${DateFormat('d MMM yyyy').format(req.dueAt.toLocal())} to keep your account active.'),
+            Text('Conferma la tua partecipazione entro il ${DateFormat('d MMM yyyy').format(req.dueAt.toLocal())} per mantenere attivo il tuo account.'),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: () async {
                 await ref.read(authProvider.notifier).confirm();
                 ref.invalidate(_confirmationProvider);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Participation confirmed!')));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Partecipazione confermata!')));
                 }
               },
-              child: const Text('Confirm my participation'),
+              child: const Text('Conferma la mia partecipazione'),
             ),
           ],
         ),

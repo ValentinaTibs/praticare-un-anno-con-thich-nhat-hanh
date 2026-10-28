@@ -115,11 +115,6 @@ class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
     }
   }
 
-  Future<void> leave() async {
-    await _api.delete('/api/sharing-channel/leave');
-    state = state.copyWith(phase: SharingChannelPhase.openNotJoined, posts: []);
-  }
-
   Future<void> sendPost(String content) async {
     await _api.post('/api/sharing-channel/posts', data: {'content': content});
     // Post will arrive via socket

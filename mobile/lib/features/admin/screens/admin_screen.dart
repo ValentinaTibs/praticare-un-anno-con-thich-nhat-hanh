@@ -51,13 +51,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin'),
+        title: const Text('Amministrazione'),
         bottom: TabBar(
           controller: _tabs,
           tabs: const [
-            Tab(text: 'Users'),
-            Tab(text: 'Sharing'),
-            Tab(text: 'Cycles'),
+            Tab(text: 'Utenti'),
+            Tab(text: 'Condivisione'),
+            Tab(text: 'Cicli'),
           ],
         ),
       ),
@@ -74,6 +74,17 @@ class _AdminScreenState extends ConsumerState<AdminScreen> with SingleTickerProv
 }
 
 // ── Users tab ─────────────────────────────────────────────────────────────────
+
+const _actionDone = {
+  'review': 'Utente segnato come revisionato',
+  'reactivate': 'Utente riattivato',
+  'suspend': 'Utente sospeso',
+  'ban': 'Utente bannato',
+  'unban': 'Ban revocato',
+  'remove': 'Utente rimosso',
+  'promote': 'Utente promosso ad admin',
+  'demote': 'Utente riportato a utente',
+};
 
 class _UsersTab extends ConsumerStatefulWidget {
   const _UsersTab();
@@ -94,9 +105,9 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
         await api.patch('/api/admin/$userId/$action');
       }
       ref.invalidate(_usersProvider);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Done: $action')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_actionDone[action] ?? 'Fatto')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
     }
   }
 
@@ -111,8 +122,8 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: SegmentedButton<String?>(
             segments: const [
-              ButtonSegment(value: null, label: Text('All')),
-              ButtonSegment(value: 'false', label: Text('New')),
+              ButtonSegment(value: null, label: Text('Tutti')),
+              ButtonSegment(value: 'false', label: Text('Da revisionare')),
             ],
             selected: {_filter},
             onSelectionChanged: (s) => setState(() => _filter = s.first),
@@ -121,7 +132,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
         Expanded(
           child: usersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
+            error: (e, _) => Center(child: Text('Errore: $e')),
             data: (users) => RefreshIndicator(
               onRefresh: () async => ref.invalidate(_usersProvider),
               child: ListView.builder(
@@ -174,7 +185,7 @@ class _UserTile extends StatelessWidget {
       ])),
       subtitle: Text([
         if (user.email != null) user.email!,
-        '${user.role} · ${user.status}',
+        '${user.roleLabel} · ${user.statusLabel}',
       ].join('\n')),
       isThreeLine: user.email != null,
       trailing: isMe
@@ -183,19 +194,21 @@ class _UserTile extends StatelessWidget {
               onSelected: (a) => onAction(user.id, a),
               itemBuilder: (_) => [
                 if (!user.reviewedByAdmin)
-                  const PopupMenuItem(value: 'review', child: Text('Mark reviewed')),
+                  const PopupMenuItem(value: 'review', child: Text('Segna come revisionato')),
                 if (user.status == 'suspended')
-                  const PopupMenuItem(value: 'reactivate', child: Text('Reactivate'))
+                  const PopupMenuItem(value: 'reactivate', child: Text('Riattiva'))
                 else if (user.status == 'active')
-                  const PopupMenuItem(value: 'suspend', child: Text('Suspend')),
+                  const PopupMenuItem(value: 'suspend', child: Text('Sospendi')),
                 if (user.status != 'banned')
-                  const PopupMenuItem(value: 'ban', child: Text('Ban', style: TextStyle(color: Colors.red))),
-                const PopupMenuItem(value: 'remove', child: Text('Remove', style: TextStyle(color: Colors.red))),
+                  const PopupMenuItem(value: 'ban', child: Text('Banna', style: TextStyle(color: Colors.red))),
+                const PopupMenuItem(value: 'remove', child: Text('Rimuovi', style: TextStyle(color: Colors.red))),
                 if (isSuperAdmin) ...[
+                  if (user.status == 'banned')
+                    const PopupMenuItem(value: 'unban', child: Text('Revoca ban')),
                   if (user.role == 'user')
-                    const PopupMenuItem(value: 'promote', child: Text('Promote to Admin'))
+                    const PopupMenuItem(value: 'promote', child: Text('Promuovi ad admin'))
                   else if (user.role == 'admin')
-                    const PopupMenuItem(value: 'demote', child: Text('Demote to User')),
+                    const PopupMenuItem(value: 'demote', child: Text('Riporta a utente')),
                 ],
               ],
             ),
@@ -233,7 +246,7 @@ class _SharingTabState extends ConsumerState<_SharingTab> {
 
   Future<void> _open() async {
     if (_selectedClose == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a closing time first')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Prima scegli l\'orario di chiusura')));
       return;
     }
     final api = ref.read(apiClientProvider);
@@ -263,38 +276,38 @@ class _SharingTabState extends ConsumerState<_SharingTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Current status', style: Theme.of(context).textTheme.titleMedium),
+              Text('Stato attuale', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Chip(
-                label: Text(isOpen ? 'Open' : 'Closed', style: const TextStyle(color: Colors.white)),
+                label: Text(isOpen ? 'Aperto' : 'Chiuso', style: const TextStyle(color: Colors.white)),
                 backgroundColor: isOpen ? Colors.green : Colors.grey,
               ),
               if (isOpen && status['scheduledClosedAt'] != null) ...[
                 const SizedBox(height: 4),
-                Text('Scheduled close: ${DateFormat('d MMM HH:mm').format(DateTime.parse(status['scheduledClosedAt'] as String).toLocal())}'),
+                Text('Chiusura prevista: ${DateFormat('d MMM HH:mm').format(DateTime.parse(status['scheduledClosedAt'] as String).toLocal())}'),
               ],
               const Divider(height: 40),
               if (!isOpen) ...[
-                Text('Open a new session', style: Theme.of(context).textTheme.titleMedium),
+                Text('Apri una nuova sessione', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _pickCloseTime,
                   icon: const Icon(Icons.schedule),
                   label: Text(_selectedClose != null
-                      ? 'Closes: ${DateFormat('d MMM HH:mm').format(_selectedClose!)}'
-                      : 'Set closing time'),
+                      ? 'Chiude: ${DateFormat('d MMM HH:mm').format(_selectedClose!)}'
+                      : 'Imposta l\'orario di chiusura'),
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: _open,
                   icon: const Icon(Icons.play_arrow),
-                  label: const Text('Open sharing channel'),
+                  label: const Text('Apri il canale di condivisione'),
                 ),
               ] else ...[
                 FilledButton.icon(
                   onPressed: _close,
                   icon: const Icon(Icons.stop),
-                  label: const Text('Close now'),
+                  label: const Text('Chiudi ora'),
                   style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 ),
               ],
@@ -315,7 +328,7 @@ class _CyclesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(authProvider).user;
     if (!(me?.isSuperAdmin ?? false)) {
-      return const Center(child: Text('Super admin only'));
+      return const Center(child: Text('Riservato ai super admin'));
     }
 
     final cycleAsync = ref.watch(_cycleProvider);
@@ -330,10 +343,10 @@ class _CyclesTab extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Registration cycle', style: Theme.of(context).textTheme.titleMedium),
+              Text('Ciclo di iscrizioni', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Chip(
-                label: Text(isOpen ? 'Open' : 'Closed', style: const TextStyle(color: Colors.white)),
+                label: Text(isOpen ? 'Aperto' : 'Chiuso', style: const TextStyle(color: Colors.white)),
                 backgroundColor: isOpen ? Colors.green : Colors.grey,
               ),
               const SizedBox(height: 24),
@@ -344,7 +357,7 @@ class _CyclesTab extends ConsumerWidget {
                     ref.invalidate(_cycleProvider);
                   },
                   icon: const Icon(Icons.lock_open),
-                  label: const Text('Open registrations'),
+                  label: const Text('Apri le iscrizioni'),
                 )
               else
                 FilledButton.icon(
@@ -353,13 +366,13 @@ class _CyclesTab extends ConsumerWidget {
                     ref.invalidate(_cycleProvider);
                   },
                   icon: const Icon(Icons.lock),
-                  label: const Text('Close registrations'),
+                  label: const Text('Chiudi le iscrizioni'),
                   style: FilledButton.styleFrom(backgroundColor: Colors.orange),
                 ),
               const SizedBox(height: 8),
               if (isOpen)
                 Text(
-                  'Opening a new cycle will unblock the emails of previously removed users.',
+                  'Aprendo un nuovo ciclo si sbloccano le email degli utenti rimossi in precedenza.',
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
             ],

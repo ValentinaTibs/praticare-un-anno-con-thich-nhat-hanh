@@ -56,14 +56,7 @@ class _SharingChannelScreenState extends ConsumerState<SharingChannelScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sharing'),
-        actions: [
-          if (state.phase == SharingChannelPhase.joined)
-            TextButton(
-              onPressed: () => ref.read(sharingChannelProvider.notifier).leave(),
-              child: const Text('Leave'),
-            ),
-        ],
+        title: const Text('Condivisione'),
       ),
       body: switch (state.phase) {
         SharingChannelPhase.closed => const _ClosedView(),
@@ -90,9 +83,9 @@ class _ClosedView extends StatelessWidget {
           children: [
             Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text('No sharing session right now', style: Theme.of(context).textTheme.titleMedium),
+            Text('Nessuna sessione di condivisione in corso', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text('You\'ll be notified when one opens.', style: TextStyle(color: Colors.grey[600])),
+            Text('Riceverai una notifica quando se ne apre una.', style: TextStyle(color: Colors.grey[600])),
           ],
         ),
       );
@@ -113,11 +106,11 @@ class _JoinView extends ConsumerWidget {
           children: [
             Icon(Icons.group_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 16),
-            Text('Sharing session is open!', style: Theme.of(context).textTheme.titleLarge),
+            Text('La sessione di condivisione è aperta!', style: Theme.of(context).textTheme.titleLarge),
             if (state.scheduledClosedAt != null) ...[
               const SizedBox(height: 8),
               Text(
-                'Closes at ${DateFormat('HH:mm').format(state.scheduledClosedAt!.toLocal())}',
+                'Chiude alle ${DateFormat('HH:mm').format(state.scheduledClosedAt!.toLocal())}',
                 style: TextStyle(color: Colors.grey[600]),
               ),
             ],
@@ -125,7 +118,7 @@ class _JoinView extends ConsumerWidget {
             FilledButton.icon(
               onPressed: loading ? null : () => ref.read(sharingChannelProvider.notifier).join(),
               icon: const Icon(Icons.login),
-              label: loading ? const Text('Joining…') : const Text('Join session'),
+              label: loading ? const Text('Ingresso…') : const Text('Entra nella sessione'),
             ),
           ],
         ),
@@ -155,13 +148,13 @@ class _ChatView extends StatelessWidget {
       children: [
         if (state.closingSoon)
           MaterialBanner(
-            content: Text('Closing in ${state.minutesRemaining} minutes'),
+            content: Text('Chiude tra ${state.minutesRemaining} minuti'),
             backgroundColor: Colors.orange[100],
             actions: [TextButton(onPressed: () {}, child: const Text('OK'))],
           ),
         Expanded(
           child: state.posts.isEmpty
-              ? Center(child: Text('No messages yet. Say something!', style: TextStyle(color: Colors.grey[500])))
+              ? Center(child: Text('Ancora nessun messaggio. Scrivi qualcosa!', style: TextStyle(color: Colors.grey[500])))
               : ListView.builder(
                   controller: scrollCtrl,
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -251,7 +244,7 @@ class _InputBar extends StatelessWidget {
                 controller: ctrl,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Message…',
+                  hintText: 'Messaggio…',
                   filled: true,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

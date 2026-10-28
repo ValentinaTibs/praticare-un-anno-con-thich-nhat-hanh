@@ -36,7 +36,7 @@ class PushService {
         notification.title,
         notification.body,
         const NotificationDetails(
-          android: AndroidNotificationDetails('default', 'Default', importance: Importance.high),
+          android: AndroidNotificationDetails('default', 'Notifiche', importance: Importance.high),
           iOS: DarwinNotificationDetails(),
         ),
       );

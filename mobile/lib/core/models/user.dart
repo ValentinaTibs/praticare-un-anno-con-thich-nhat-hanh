@@ -29,6 +29,20 @@ class User {
   bool get isSuspended => status == 'suspended';
   bool get isBanned => status == 'banned';
 
+  String get roleLabel => switch (role) {
+        'super_admin' => 'Super admin',
+        'admin' => 'Admin',
+        'user' => 'Utente',
+        _ => role,
+      };
+
+  String get statusLabel => switch (status) {
+        'active' => 'Attivo',
+        'suspended' => 'Sospeso',
+        'banned' => 'Bannato',
+        _ => status,
+      };
+
   factory User.fromJson(Map<String, dynamic> json) => User(
         id: json['id'] as String,
         name: json['name'] as String,
