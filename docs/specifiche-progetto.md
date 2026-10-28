@@ -76,6 +76,7 @@
 ### Richiesta di partecipazione
 - Mentre il ciclo è aperto, l'utente in attesa può **chiedere di partecipare**. La richiesta vale subito: **non serve l'approvazione** degli admin.
 - Gli admin vedono l'elenco dei richiedenti con la loro motivazione, e possono rimuovere o bannare come sempre.
+- Chi viene **rimosso** da un admin mentre ha una richiesta in corso **non può chiedere di nuovo** di partecipare nello stesso ciclo, anche se si registra di nuovo con la stessa email. Potrà farlo dal ciclo successivo.
 - L'utente può **annullare** la richiesta fino alla data di inizio, e rifarla finché il ciclo è aperto.
 - Gli utenti in attesa vedono in app **quante persone** hanno chiesto di partecipare al prossimo percorso. Il numero si aggiorna, ma non parte una notifica a ogni nuova richiesta.
 - Si partecipa a **un percorso alla volta**: chi è in un gruppo attivo non può chiedere di partecipare al successivo.
@@ -117,7 +118,7 @@ PARTECIPANTE ──(fine del percorso)──► IN ATTESA
 | Caso | Chi lo decide | Account | Email |
 |---|---|---|---|
 | **Ban** | Admin | Resta, in stato bannato | Bloccata finché il Super Admin non revoca il ban |
-| **Rimozione** | Admin | Eliminato con tutti i dati | Non bloccata |
+| **Rimozione** | Admin | Eliminato con tutti i dati | Non bloccata per la registrazione. Se aveva una richiesta in corso, non può chiedere di nuovo di partecipare nello stesso ciclo |
 | **Cancellazione autonoma** | Utente | Eliminato con tutti i dati | Non bloccata |
 
 - Rimozione e cancellazione autonoma eliminano anche l'**account di accesso in Firebase** (email e password).
@@ -293,8 +294,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - Creazione degli account sviluppatore negli store. Con account personali non serve il numero D-U-N-S, ma su Android il test chiuso di 14 giorni deve partire entro il 20 novembre.
 - **Nome del percorso.** Il nome potrebbe cambiare, quindi il documento non lo fissa.
 - **Diritti sulle frasi di Thich Nhat Hanh.** Il gruppo di progetto deve verificare che l'invio quotidiano delle frasi sia consentito.
-- **Rimozione di chi ha una richiesta in corso.** Senza blocco dell'email, chi viene rimosso mentre il ciclo è aperto può registrarsi di nuovo e chiedere di partecipare allo stesso percorso. Da decidere se va impedito.
-
 ## 15. Differenze tra specifiche e codice attuale
 - **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti data di inizio e durata.
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
@@ -322,7 +321,7 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. L'utente entra nel gruppo al momento della registrazione, non alla data di inizio.
 - **Utente in attesa:** non esiste. A ciclo chiuso il codice rifiuta la registrazione invece di creare un utente in attesa. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa.
-- **Blocco temporaneo dell'email:** il codice blocca l'email di chi è rimosso fino al ciclo successivo. Le specifiche lo eliminano: resta solo il ban.
+- **Blocco temporaneo dell'email:** il codice blocca la registrazione di chi è rimosso fino al ciclo successivo. Le specifiche lo sostituiscono con un vincolo più stretto: la registrazione resta libera, ma chi è rimosso con una richiesta in corso non può chiedere di nuovo nello stesso ciclo.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import da CSV, il job delle 07:00 né l'interruttore nel profilo.
 - **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.
 - **Sequenza unica dei post:** il codice programma ogni post a una data fissa. Le specifiche chiedono un giorno relativo all'inizio del gruppo.
