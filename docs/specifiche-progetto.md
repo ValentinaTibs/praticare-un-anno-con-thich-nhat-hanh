@@ -1,7 +1,7 @@
 # Community App — Specifiche di progetto
 
 > Stato: **completa per la prima release**. Le questioni ancora da chiarire sono raccolte nella sezione 14, Punti aperti.
-> Ultimo aggiornamento: 2026-10-16
+> Ultimo aggiornamento: 2026-10-28
 
 ## 1. Visione e obiettivi
 - L'app supporta un percorso di pratica della community **"La via della trasformazione"**. Il nome del percorso potrebbe cambiare.
@@ -15,6 +15,7 @@
 | Admin | Modera utenti, pubblica nel Canale Principale, gestisce il Canale di Condivisione |
 | Super Admin | Come Admin, in più gestisce i cicli di registrazione e promuove/declassa gli Admin |
 
+- Ogni utente, qualunque sia il ruolo, è **in attesa** oppure **partecipa a un percorso** (sezione 5). Non è un ruolo in più.
 - Admin e Super Admin usano anche l'app mobile come partecipanti: leggono il Canale Principale ed entrano nel cerchio.
 - Tutti accedono con **email e password**, sia all'app sia al pannello web. Il pannello è riservato agli utenti con ruolo admin o Super Admin.
 - Un utente diventa admin quando il Super Admin lo promuove. Non servono account separati.
@@ -26,7 +27,7 @@
 - **Database:** PostgreSQL tramite Prisma
 - **Autenticazione:** email e password tramite Firebase Authentication. L'email deve essere verificata. Il backend verifica il token Firebase ed emette i propri JWT (access 15 min, refresh 30 giorni). Firebase invia anche le email di verifica e di reimpostazione della password
 - **Notifiche push e tempo reale:** Firebase Cloud Messaging, più dispositivi per utente
-- **Email:** servizio di invio da scegliere, necessario per gli avvisi alla lista d'attesa. È separato dalle email di accesso, che invia Firebase
+- **Email:** nella prima release il backend non invia email. Le uniche email sono quelle di accesso, che invia Firebase
 - **Pannello admin:** Flutter Web
 - **Job pianificati:** node-cron
 
@@ -34,7 +35,7 @@
 - Registrazione con nome, cognome, email, password e motivazione.
 - Prima di entrare l'utente deve **confermare l'email** con il link che riceve.
 - La motivazione è utile sia al partecipante, come riflessione personale, sia agli admin, per conoscerlo.
-- La registrazione è possibile solo quando un **ciclo di registrazione** è aperto.
+- La registrazione è **sempre aperta**. Chi si registra è un **utente in attesa** finché non partecipa a un percorso (sezione 5).
 - L'utente è **attivo subito**; viene marcato come "non ancora revisionato" per gli admin. La revisione della motivazione è informativa, non un blocco.
 - Se il link di conferma scade, l'utente ne richiede uno nuovo. Il nostro backend non salva nulla finché la registrazione non è completa.
 - Chi ha dimenticato la password la reimposta tramite un link ricevuto via email.
@@ -44,34 +45,65 @@
 - L'utente può modificare da solo nome, cognome e motivazione.
 - Nella prima release l'**email non si può cambiare**.
 
-## 5. Cicli di registrazione e gruppi
-- I cicli sono definiti dagli admin: si imposta una finestra temporale in cui l'app accetta nuove registrazioni.
-- **Solo il Super Admin** apre i cicli di registrazione.
-- All'apertura il Super Admin imposta la **data di chiusura**. Il ciclo si chiude automaticamente a quella data.
-- All'apertura di un ciclo, le email bloccate temporaneamente vengono sbloccate.
-- Fuori dal ciclo le nuove registrazioni sono rifiutate; gli utenti esistenti non subiscono effetti.
-- Chi prova a registrarsi a ciclo chiuso vede un messaggio e può iscriversi alla lista d'attesa. Il Super Admin può modificare il testo del messaggio dal pannello web.
+## 5. Utenti in attesa, cicli e percorsi
+
+### Percorso e gruppo
+- Un **percorso** è il cammino che un **gruppo** fa insieme, dalla data di inizio alla fine.
+- Il **giorno del percorso** si conta dalla data di inizio del gruppo: il giorno di inizio è il giorno 1. Lo stesso conteggio regola i post del Canale Principale (sezione 8) e le frasi del percorso (sezione 10).
+
+### Utente in attesa
+- Un utente è **in attesa** quando non fa parte di un gruppo attivo: appena registrato, dopo la fine del suo percorso, oppure dopo aver chiesto di partecipare, finché il percorso non comincia.
+- Non è un ruolo né uno stato dell'account: è un utente attivo senza gruppo. Anche un admin può essere in attesa; il pannello web resta comunque disponibile per intero.
+- Nell'app l'utente in attesa vede **una sola schermata** con:
+  - la frase del giorno, presa dalle frasi dell'anno (sezione 10);
+  - quante persone hanno chiesto di partecipare al prossimo percorso;
+  - il pulsante **"Chiedi di partecipare"**, oppure "Annulla la richiesta" se l'ha già fatta;
+  - il profilo, compresa la cancellazione dell'account.
+- Non ha accesso a Canale Principale, cerchio e round di conferma.
+
+### Cicli
+- Un **ciclo** è la finestra in cui gli utenti in attesa possono chiedere di partecipare a un **percorso preciso**.
+- **Solo il Super Admin** apre i cicli. Può esserci un solo ciclo aperto alla volta.
+- All'apertura il Super Admin imposta:
+  - la **data di chiusura** delle richieste;
+  - la **data di inizio** del percorso, uguale o successiva alla chiusura;
+  - la **durata** del percorso in giorni, 365 se non indicata.
+- Il ciclo si chiude automaticamente alla data di chiusura. Il Super Admin può chiuderlo prima.
+- Fino al giorno di inizio il Super Admin può spostare la data di chiusura e la data di inizio. Se cambia la data di inizio, chi ha chiesto di partecipare riceve una notifica.
+- All'apertura del ciclo tutti gli utenti in attesa ricevono una notifica, ad esempio "Sono aperte le richieste per il percorso che inizia il 12 gennaio".
+- A ciclo chiuso il pulsante "Chiedi di partecipare" è disattivato e l'app mostra un messaggio. Il Super Admin può modificarne il testo dal pannello web.
+
+### Richiesta di partecipazione
+- Mentre il ciclo è aperto, l'utente in attesa può **chiedere di partecipare**. La richiesta vale subito: **non serve l'approvazione** degli admin.
+- Gli admin vedono l'elenco dei richiedenti con la loro motivazione, e possono rimuovere o bannare come sempre.
+- L'utente può **annullare** la richiesta fino alla data di inizio, e rifarla finché il ciclo è aperto.
+- Gli utenti in attesa vedono in app **quante persone** hanno chiesto di partecipare al prossimo percorso. Il numero si aggiorna, ma non parte una notifica a ogni nuova richiesta.
+- Si partecipa a **un percorso alla volta**: chi è in un gruppo attivo non può chiedere di partecipare al successivo.
 
 ### Gruppi
-- Un **gruppo** è l'insieme degli utenti registrati nello **stesso ciclo di registrazione**.
+- Un **gruppo** è l'insieme delle persone che hanno chiesto di partecipare nello **stesso ciclo**.
+- Il gruppo nasce alle **00:00 (ora italiana) della data di inizio** con tutti i richiedenti, che partono insieme dal giorno 1. Chi entra nel gruppo vale come appena confermato.
+- Se alla data di inizio nessuno ha chiesto di partecipare, il gruppo non viene creato.
 - Più gruppi possono essere attivi contemporaneamente.
 - Ogni gruppo ha il **proprio Canale Principale** e il **proprio cerchio**. Un utente vede solo quelli del suo gruppo.
 - Ogni gruppo ha i **propri round di conferma**.
 - Gli admin gestiscono **tutti i gruppi**.
-- Un gruppo ha una **fine**. Cosa succede ai membri alla fine del gruppo è ancora da decidere.
+- Il gruppo **finisce automaticamente** quando è trascorsa la durata impostata all'apertura del ciclo. I membri **tornano in attesa**: perdono l'accesso al Canale Principale e al cerchio del gruppo, che resta archiviato e visibile solo agli admin. Dal giorno dopo ricevono di nuovo le frasi dell'anno e possono chiedere di partecipare a un nuovo percorso.
 
-### Lista d'attesa
-- Chi arriva quando il ciclo di registrazione è chiuso entra in una **lista d'attesa**.
-- In lista d'attesa la persona compila già **tutti i dati della registrazione**, compresa un'**email**. Quando si apre il ciclo è tutto pronto.
-- All'apertura del ciclo la persona entra nel nuovo gruppo e riceve un avviso **via app e via email**.
-- Lo stesso vale per chi è stato rimosso o ha cancellato il proprio account: resta in lista d'attesa fino al ciclo successivo, e poi entra nel nuovo gruppo.
+### Passaggi tra attesa e percorso
+```
+registrazione ──► IN ATTESA ──(chiede di partecipare, ciclo aperto)──► IN ATTESA CON RICHIESTA
+IN ATTESA CON RICHIESTA ──(annulla, prima dell'inizio)──► IN ATTESA
+IN ATTESA CON RICHIESTA ──(data di inizio)──► PARTECIPANTE
+PARTECIPANTE ──(fine del percorso)──► IN ATTESA
+```
 
 ## 6. Stati dell'utente
 
 ### 6.1 Stati dell'account
 | Stato | Come ci si arriva | Cosa può fare l'utente | Come se ne esce |
 |---|---|---|---|
-| **Attivo** | Registrazione durante un ciclo aperto, oppure riattivazione da parte di un admin | Usa l'app normalmente | Sospensione, ban, rimozione o cancellazione autonoma |
+| **Attivo** | Registrazione, oppure riattivazione da parte di un admin | Usa l'app normalmente, come utente in attesa o come partecipante | Sospensione, ban, rimozione o cancellazione autonoma |
 | **Sospeso** | Mancata conferma entro la scadenza di un round, oppure decisione di un admin | Non può usare l'app. Vede solo il messaggio di sospensione | Solo un admin può riattivarlo. Può anche essere bannato o rimosso |
 | **Bannato** | Decisione di un admin | Non può usare l'app. Vede solo il messaggio di ban | Solo il Super Admin può revocare il ban, ad esempio in caso di errore |
 
@@ -85,11 +117,12 @@
 | Caso | Chi lo decide | Account | Email |
 |---|---|---|---|
 | **Ban** | Admin | Resta, in stato bannato | Bloccata finché il Super Admin non revoca il ban |
-| **Rimozione** | Admin | Eliminato con tutti i dati | Bloccata fino all'apertura del ciclo successivo |
-| **Cancellazione autonoma** | Utente | Eliminato con tutti i dati | Bloccata fino all'apertura del ciclo successivo |
+| **Rimozione** | Admin | Eliminato con tutti i dati | Non bloccata |
+| **Cancellazione autonoma** | Utente | Eliminato con tutti i dati | Non bloccata |
 
-- Rimozione e cancellazione autonoma eliminano anche l'**account di accesso in Firebase** (email e password). Il blocco resta comunque, perché è legato all'email.
-- Il blocco vale per il **singolo indirizzo email**. Chi usa un altro indirizzo, anche un alias della stessa casella come nome+altro@gmail.com, può registrarsi di nuovo durante un ciclo aperto.
+- Rimozione e cancellazione autonoma eliminano anche l'**account di accesso in Firebase** (email e password).
+- Chi è stato rimosso o ha cancellato l'account può **registrarsi di nuovo subito**. Torna utente in attesa e può chiedere di partecipare a un percorso successivo. Rimozione = fuori dal percorso, si può tornare; ban = fuori per sempre.
+- Il ban vale per il **singolo indirizzo email**. Chi usa un altro indirizzo, anche un alias della stessa casella come nome+altro@gmail.com, può registrarsi di nuovo.
 
 ### 6.3 Messaggi mostrati agli utenti bloccati
 - L'utente sospeso e l'utente bannato vedono un messaggio dedicato con l'**email di contatto** degli admin, ad esempio admin@laviadellatrasformazione.it.
@@ -109,9 +142,10 @@ ATTIVO o SOSPESO ──(rimozione admin / cancellazione utente)──► account
 - Ogni richiesta è un **round** che coinvolge **tutti gli utenti attivi del gruppo** insieme. Non si inviano richieste a singole persone.
 - Un round avviato **non si può annullare**.
 - Ogni round riguarda **un gruppo**. Può esserci un round in corso per ogni gruppo attivo.
-- L'utente riceve due **promemoria**: 3 giorni prima della scadenza e il giorno della scadenza. Il canale di invio verrà definito nella sezione Notifiche.
+- Gli **utenti in attesa** non ricevono round di conferma e non possono essere sospesi per mancata conferma.
+- L'utente riceve due **promemoria** con notifica push: 3 giorni prima della scadenza e il giorno della scadenza.
 - Se non conferma entro la scadenza, l'account viene sospeso. Solo un admin può riattivarlo.
-- I nuovi utenti entrano solo durante i cicli di registrazione.
+- I nuovi partecipanti entrano in un gruppo solo alla data di inizio di un percorso.
 
 ## 8. Canale Principale
 - Canale di comunicazione degli admin verso un gruppo. **Ogni gruppo ha il proprio** Canale Principale.
@@ -147,13 +181,51 @@ ATTIVO o SOSPESO ──(rimozione admin / cancellazione utente)──► account
 - Gli admin possono cancellare messaggi e vedere i membri.
 
 
-## 10. Notifiche
-> Sezione **da definire in una fase successiva**. Per ora le notifiche sono fuori dal perimetro di queste specifiche.
+## 10. Frase del giorno e notifiche
 
-Eventi già emersi da considerare:
-- apertura del ciclo per chi è in lista d'attesa, via app e via email;
-- promemoria delle conferme di appartenenza;
-- avviso di chiusura imminente del cerchio.
+### 10.1 Frase del giorno
+- Ogni giorno ogni utente riceve una **frase di Thich Nhat Hanh**.
+- Le frasi stanno in **due elenchi separati**:
+  - **Frasi dell'anno**, per gli utenti in attesa. Ogni frase è legata a un **giorno di calendario** (giorno e mese, 366 giorni compreso il 29 febbraio) e si ripete ogni anno. Tutti gli utenti in attesa ricevono la stessa frase lo stesso giorno.
+  - **Frasi del percorso**, per chi partecipa. Ogni frase è legata a un **giorno del percorso** (1, 2, … N). Un unico elenco vale per tutti i gruppi, ognuno a partire dalla propria data di inizio. Nella prima release non ci sono frasi diverse per gruppo.
+- Chi partecipa riceve **solo** le frasi del percorso, non quelle dell'anno. Chi ha chiesto di partecipare riceve le frasi dell'anno fino al giorno 1.
+- Nei giorni senza frase non parte nessuna notifica. Dopo l'ultima frase del percorso non arriva più nulla.
+- La notifica parte alle **07:00 ora italiana**, uguale per tutti. L'orario si imposta nella configurazione del server.
+- Il giorno 1 la notifica annuncia anche l'inizio, ad esempio "Oggi inizia il tuo percorso — giorno 1". Non c'è una notifica separata per l'inizio.
+- La frase di oggi si legge anche nell'app, con la sua fonte: nella schermata "In attesa" o nella home del gruppo. Nella prima release non c'è un archivio delle frasi passate.
+- L'utente può disattivare dal profilo la notifica della frase, con l'interruttore **"Frase del giorno"**, attivo di default. Le altre notifiche restano attive.
+
+### 10.2 Gestione delle frasi
+- **Tutti gli admin** gestiscono le frasi dal pannello web, in due elenchi: Frasi dell'anno e Frasi del percorso.
+- Ogni frase si può vedere, modificare e cancellare.
+- Le frasi si caricano con un **file CSV**: codifica UTF-8, riga di intestazione, separatore `;`, colonne `giorno;frase;fonte`.
+  - Frasi dell'anno: `giorno` nel formato `GG-MM`, ad esempio `05-03` per il 5 marzo.
+  - Frasi del percorso: `giorno` è un numero, ad esempio `15`.
+  - `fonte` è facoltativa: il libro, ed eventualmente la pagina, da cui viene la frase.
+- L'import **aggiorna o inserisce** riga per riga in base al giorno. Le frasi assenti dal file restano come sono.
+- Prima di salvare, il pannello mostra un'**anteprima** con gli errori: giorni duplicati, date o numeri non validi, frasi vuote. Se c'è anche un solo errore non si salva nulla.
+
+Esempio per le frasi dell'anno:
+```
+giorno;frase;fonte
+01-01;Testo della frase del 1° gennaio;Titolo del libro, p. 12
+02-01;Testo della frase del 2 gennaio;
+```
+
+- **Diritti d'autore:** i testi di Thich Nhat Hanh sono protetti (Plum Village, Parallax Press). La responsabilità del loro uso è del gruppo di progetto. Per questo ogni frase cita la sua fonte quando è disponibile.
+
+### 10.3 Notifiche
+- Nella prima release le notifiche sono **solo push**, tramite Firebase Cloud Messaging. Non si inviano email.
+
+| Evento | Chi la riceve | Quando |
+|---|---|---|
+| Frase del giorno | Utenti attivi con l'interruttore "Frase del giorno" attivo | Ogni giorno alle 07:00 |
+| Apertura di un ciclo | Tutti gli utenti in attesa | All'apertura |
+| Cambio della data di inizio | Chi ha chiesto di partecipare | Alla modifica |
+| Promemoria della conferma | Membri del gruppo che non hanno ancora confermato | 3 giorni prima della scadenza e il giorno della scadenza |
+| Chiusura imminente del cerchio | Chi è nel cerchio | 15 minuti prima della chiusura, configurabile |
+
+- Altri eventi, l'invio di email e l'orario della frase scelto da ogni utente sono rimandati alle release successive.
 
 ## 11. Privacy e dati personali
 - Alla registrazione l'utente deve **accettare un'informativa privacy**.
@@ -162,7 +234,7 @@ Eventi già emersi da considerare:
 - Il progetto è un **gruppo informale**, non un ente. Il **titolare del trattamento** è quindi una persona fisica del gruppo, indicata nell'informativa con i suoi contatti.
 - L'utente può **cancellare autonomamente** il proprio account dall'app.
 - Alla cancellazione **tutti i dati dell'utente vengono eliminati subito**, compreso l'account di accesso in Firebase con email e password.
-- Dopo la cancellazione l'utente può registrarsi di nuovo al **ciclo successivo**, come avviene per la rimozione da parte di un admin. Per applicare questa regola l'email resta nell'elenco delle email bloccate fino all'apertura del ciclo successivo.
+- Dopo la cancellazione l'utente può registrarsi di nuovo subito, come utente in attesa. L'email non resta bloccata.
 
 ## 12. Requisiti non funzionali
 - **Prima release (MVP):** **26 dicembre 2026**. Per l'MVP si sceglie sempre la soluzione più semplice.
@@ -174,17 +246,18 @@ Eventi già emersi da considerare:
 - Sequenza dei post del Canale Principale: bozze, pubblicazione, programmazione relativa all'inizio del gruppo.
 - Programmazione del cerchio.
 - Round di conferma di appartenenza, per gruppo.
-- Gruppi: elenco dei gruppi e dei loro membri.
-- Lista d'attesa: elenco delle persone in attesa del prossimo ciclo.
-- Cicli di apertura dell'app alle registrazioni, solo per il Super Admin.
+- Gruppi: elenco dei gruppi, attivi e archiviati, e dei loro membri.
+- Utenti in attesa: elenco degli utenti in attesa e dei richiedenti del prossimo percorso, con la motivazione.
+- Frasi dell'anno e frasi del percorso, con import da CSV.
+- Cicli, solo per il Super Admin: apertura con data di chiusura, data di inizio e durata del percorso; modifica delle date fino all'inizio; chiusura anticipata.
 - Gestione dei ruoli, solo per il Super Admin.
-- Testi dei messaggi per sospesi, bannati e registrazione a ciclo chiuso, ed email di contatto, solo per il Super Admin.
+- Testi dei messaggi per sospesi, bannati e richieste a ciclo chiuso, ed email di contatto, solo per il Super Admin.
 
 ### Altri requisiti
 - **Lingua:** solo italiano, in tutta l'app e nelle notifiche.
 - **Carico:** circa 100 utenti, 3-4 admin.
 - **Hosting e budget:** non ancora scelti. La scelta spetta al team.
-- **Pubblicazione negli store:** il progetto è un gruppo informale, quindi gli account sviluppatore per App Store e Google Play sono **account personali di un referente**, registrati con la **mail di progetto**. Su App Store come venditore compare il nome e cognome del referente. Gli account non esistono ancora. Se in futuro nascerà un ente, Apple e Google permettono di trasferire l'app.
+- **Pubblicazione negli store:** il progetto è un gruppo informale, quindi gli account sviluppatore per App Store e Google Play sono **account personali di un referente**, registrati con la **mail di progetto** tech@laviadellatrasformazione.it. Su App Store come venditore compare il nome e cognome del referente. Gli account non esistono ancora. Se in futuro nascerà un ente, Apple e Google permettono di trasferire l'app.
 - **Test prima del rilascio:** su iOS l'app viene provata da almeno **3 tester** tramite TestFlight. Su Android Google impone agli account personali nuovi un **test chiuso con almeno 12 tester iscritti per 14 giorni consecutivi** prima di poter pubblicare.
 
 ## 13. Release successive
@@ -199,12 +272,16 @@ Funzionalità escluse dalla prima release e già decise per il futuro.
 | Canale di Condivisione | Rimozione automatica del post di annuncio dopo la chiusura del cerchio | Sezione 9 |
 | Amministrazione | Funzioni admin anche nell'app mobile | Sezione 12 |
 | Profilo | Cambio dell'email | Sezione 4 |
-| Notifiche | Definizione completa degli eventi e dei canali di notifica | Sezione 10 |
+| Notifiche | Altri eventi e altri canali di notifica, compresa l'email | Sezione 10 |
+| Cicli | Promemoria agli utenti in attesa prima della chiusura delle richieste | Sezione 5 |
+| Frase del giorno | Orario della notifica scelto da ogni utente | Sezione 10 |
+| Frase del giorno | Archivio delle frasi passate | Sezione 10 |
+| Frase del giorno | Frasi del percorso diverse per gruppo | Sezione 10 |
 
 ### Possono slittare se i tempi stringono
 Fanno parte della prima release, ma possono essere rimandate per rispettare la data del 26 dicembre.
 
-- **Modifica dei testi per sospesi, bannati e registrazione a ciclo chiuso.** Se slitta, i testi restano fissi.
+- **Modifica dei testi per sospesi, bannati e richieste a ciclo chiuso.** Se slitta, i testi restano fissi.
 - **Revoca del ban dal pannello.** Se slitta, la revoca si fa a mano sul database su richiesta del Super Admin.
 
 La **cancellazione autonoma dell'account non può slittare**. Apple chiede che le app con registrazione permettano di cancellare l'account dall'interno dell'app, e Google Play ha un requisito simile. Senza questa funzione l'app rischia di essere rifiutata dagli store.
@@ -214,13 +291,14 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - Hosting e budget.
 - **Referente del progetto:** la persona che intesta gli account store e fa da titolare del trattamento dei dati. Da scegliere.
 - Creazione degli account sviluppatore negli store. Con account personali non serve il numero D-U-N-S, ma su Android il test chiuso di 14 giorni deve partire entro il 20 novembre.
-- **Fine di un gruppo.** Quando finisce un gruppo e cosa succede ai suoi membri: decisione rimandata.
 - **Nome del percorso.** Il nome potrebbe cambiare, quindi il documento non lo fissa.
+- **Diritti sulle frasi di Thich Nhat Hanh.** Il gruppo di progetto deve verificare che l'invio quotidiano delle frasi sia consentito.
+- **Rimozione di chi ha una richiesta in corso.** Senza blocco dell'email, chi viene rimosso mentre il ciclo è aperto può registrarsi di nuovo e chiedere di partecipare allo stesso percorso. Da decidere se va impedito.
 
 ## 15. Differenze tra specifiche e codice attuale
 - **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti data di inizio e durata.
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
-- **Chiusura automatica dei cicli:** il codice non prevede una data di chiusura. Il ciclo si chiude solo a mano.
+- **Date del ciclo:** il codice gestisce la data di chiusura e la chiusura automatica, ma non la data di inizio del percorso né la durata. Il gruppo nasce all'apertura del ciclo invece che alla data di inizio, e le date non si possono modificare.
 - **Programmazione ricorrente del cerchio:** il codice prevede solo l'apertura manuale da parte di un admin.
 - **Già allineato:** la cancellazione dei messaggi alla chiusura del cerchio è già implementata.
 - **Lingua delle notifiche:** i testi delle notifiche nel codice sono in inglese.
@@ -241,8 +319,11 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Revoca del ban:** il codice non prevede di revocare un ban.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
 - **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
-- **Gruppi:** il codice non lega gli utenti al ciclo in cui si sono registrati. Round di conferma, Canale Principale e cerchio sono unici per tutti.
-- **Lista d'attesa:** non esiste. A ciclo chiuso il codice rifiuta semplicemente la registrazione.
+- **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. L'utente entra nel gruppo al momento della registrazione, non alla data di inizio.
+- **Utente in attesa:** non esiste. A ciclo chiuso il codice rifiuta la registrazione invece di creare un utente in attesa. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
+- **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa.
+- **Blocco temporaneo dell'email:** il codice blocca l'email di chi è rimosso fino al ciclo successivo. Le specifiche lo eliminano: resta solo il ban.
+- **Frase del giorno:** non esistono gli elenchi delle frasi, l'import da CSV, il job delle 07:00 né l'interruttore nel profilo.
+- **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.
 - **Sequenza unica dei post:** il codice programma ogni post a una data fissa. Le specifiche chiedono un giorno relativo all'inizio del gruppo.
-- **Invio di email:** il backend non invia email, quindi mancano gli avvisi alla lista d'attesa.
 - **Messaggi modificabili:** non esiste un modo per far modificare al Super Admin i testi per sospesi e bannati.
