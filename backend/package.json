@@ -27,6 +27,7 @@
     "node-cron": "^3.0.3",
     "pino": "^9.1.0",
     "pino-pretty": "^11.1.0",
+    "prisma": "^5.22.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -34,9 +35,11 @@
     "@types/node-cron": "^3.0.11",
     "@vitest/coverage-v8": "^1.6.0",
     "embedded-postgres": "17.5.0-beta.15",
-    "prisma": "^5.14.0",
     "tsx": "^4.15.1",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
