@@ -102,10 +102,10 @@ Lo script crea un Super Admin con l'email segnaposto `superadmin@example.com`. P
 ### 6. Avviare il server
 
 ```bash
-npx tsx watch --env-file=.env src/server.ts
+npm run dev
 ```
 
-Il server risponde su `http://localhost:3000` e si riavvia a ogni modifica del codice. Lo script `npm run dev` non legge il file `.env`, quindi per ora va usato il comando qui sopra.
+Il server legge le variabili dal file `.env`, risponde su `http://localhost:3000` e si riavvia a ogni modifica del codice.
 
 ### Altri comandi utili
 
