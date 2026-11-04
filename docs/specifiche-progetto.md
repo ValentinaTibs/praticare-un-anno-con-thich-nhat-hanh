@@ -36,7 +36,7 @@
 - Prima di entrare l'utente deve **confermare l'email** con il link che riceve.
 - La motivazione è utile sia al partecipante, come riflessione personale, sia agli admin, per conoscerlo.
 - La registrazione è **sempre aperta**. Chi si registra è un **utente in attesa** finché non partecipa a un percorso (sezione 5).
-- L'utente è **attivo subito**; viene marcato come "non ancora revisionato" per gli admin. La revisione della motivazione è informativa, non un blocco.
+- L'utente è **attivo subito** e diventa utente in attesa, marcato come "non ancora revisionato". Per entrare in un percorso serve la **revisione** di un admin (sezione 5).
 - Se il link di conferma scade, l'utente ne richiede uno nuovo. Il nostro backend non salva nulla finché la registrazione non è completa.
 - Chi ha dimenticato la password la reimposta tramite un link ricevuto via email.
 - Più dispositivi possono essere connessi contemporaneamente.
@@ -74,8 +74,10 @@
 - A ciclo chiuso il pulsante "Chiedi di partecipare" è disattivato e l'app mostra un messaggio. Il Super Admin può modificarne il testo dal pannello web.
 
 ### Richiesta di partecipazione
-- Mentre il ciclo è aperto, l'utente in attesa può **chiedere di partecipare**. La richiesta vale subito: **non serve l'approvazione** degli admin.
-- Gli admin vedono l'elenco dei richiedenti con la loro motivazione, e possono rimuovere o bannare come sempre.
+- Mentre il ciclo è aperto, l'utente in attesa può **chiedere di partecipare**.
+- Per entrare nel gruppo serve la **revisione** di un admin: legge la motivazione e segna l'utente come revisionato. La revisione vale una volta sola: chi è già stato revisionato, ad esempio in un percorso precedente, non va revisionato di nuovo.
+- Gli admin vedono l'elenco dei richiedenti con la loro motivazione, distinguendo chi è da revisionare. Chi non va accolto si rimuove o si banna, come sempre.
+- Chi alla data di inizio non è ancora stato revisionato **non entra nel gruppo**: resta in attesa e la sua richiesta decade.
 - Chi viene **rimosso** da un admin mentre ha una richiesta in corso **non può chiedere di nuovo** di partecipare nello stesso ciclo, anche se si registra di nuovo con la stessa email. Potrà farlo dal ciclo successivo.
 - L'utente può **annullare** la richiesta fino alla data di inizio, e rifarla finché il ciclo è aperto.
 - Gli utenti in attesa vedono in app **quante persone** hanno chiesto di partecipare al prossimo percorso. Il numero si aggiorna, ma non parte una notifica a ogni nuova richiesta.
@@ -83,8 +85,8 @@
 
 ### Gruppi
 - Un **gruppo** è l'insieme delle persone che hanno chiesto di partecipare nello **stesso ciclo**.
-- Il gruppo nasce alle **00:00 (ora italiana) della data di inizio** con tutti i richiedenti, che partono insieme dal giorno 1. Chi entra nel gruppo vale come appena confermato.
-- Se alla data di inizio nessuno ha chiesto di partecipare, il gruppo non viene creato.
+- Il gruppo nasce alle **00:00 (ora italiana) della data di inizio** con tutti i richiedenti revisionati, che partono insieme dal giorno 1. Chi entra nel gruppo vale come appena confermato.
+- Se alla data di inizio non c'è nessun richiedente revisionato, il gruppo non viene creato.
 - Più gruppi possono essere attivi contemporaneamente.
 - Ogni gruppo ha il **proprio Canale Principale** e il **proprio cerchio**. Un utente vede solo quelli del suo gruppo.
 - Ogni gruppo ha i **propri round di conferma**.
@@ -95,7 +97,8 @@
 ```
 registrazione ──► IN ATTESA ──(chiede di partecipare, ciclo aperto)──► IN ATTESA CON RICHIESTA
 IN ATTESA CON RICHIESTA ──(annulla, prima dell'inizio)──► IN ATTESA
-IN ATTESA CON RICHIESTA ──(data di inizio)──► PARTECIPANTE
+IN ATTESA CON RICHIESTA ──(data di inizio, se revisionato)──► PARTECIPANTE
+IN ATTESA CON RICHIESTA ──(data di inizio, non revisionato)──► IN ATTESA
 PARTECIPANTE ──(fine del percorso)──► IN ATTESA
 ```
 
@@ -108,7 +111,7 @@ PARTECIPANTE ──(fine del percorso)──► IN ATTESA
 | **Sospeso** | Mancata conferma entro la scadenza di un round, oppure decisione di un admin | Non può usare l'app. Vede solo il messaggio di sospensione | Solo un admin può riattivarlo. Può anche essere bannato o rimosso |
 | **Bannato** | Decisione di un admin | Non può usare l'app. Vede solo il messaggio di ban | Solo il Super Admin può revocare il ban, ad esempio in caso di errore |
 
-- **Utente nuovo:** non è uno stato a sé. È un utente attivo non ancora revisionato da un admin. La revisione serve solo a far sapere agli admin chi è arrivato, e non blocca nulla.
+- **Utente nuovo:** non è uno stato a sé. È un utente attivo non ancora revisionato da un admin. Finché non è revisionato resta in attesa e non può entrare in un percorso.
 - La sospensione ha effetto immediato, anche sui dispositivi già collegati.
 - Un utente sospeso non entra nei nuovi round di conferma.
 - Alla riattivazione, l'utente è considerato in regola con l'ultimo round di conferma senza fare altro.
@@ -259,7 +262,7 @@ giorno;frase;fonte
 - **Carico:** circa 100 utenti, 3-4 admin.
 - **Hosting:** **Railway**, regione EU West (Amsterdam). Un progetto con due ambienti, **prova** e **produzione**, ognuno con il proprio backend, il proprio database PostgreSQL e i propri secret. La prova si aggiorna a ogni push su `main`; la produzione solo con un deploy esplicito. Entrambi gli ambienti usano `NODE_ENV=production`.
 - **Firebase:** due progetti, `la-via-trasformazione-prova` per lo sviluppo e la prova, `la-via-della-trasformazione` per la produzione. Le chiavi di produzione stanno solo nel gestore di credenziali e nelle variabili di Railway.
-- **Budget:** per ora si usa il credito della prova gratuita di Railway (5 $, valido 30 giorni), senza abbonamento e senza tetto di spesa. Con l'abbonamento Hobby la stima è di circa 7–12 $ al mese per i due ambienti.
+- **Budget:** circa 7–12 $ al mese per i due ambienti, con un tetto fisso di 20 $ su Railway. Il primo mese è coperto dal credito di prova.
 - **Backup:** giornalieri e settimanali del database di produzione, gestiti da Railway. Prima del lancio si prova un ripristino.
 - **Pubblicazione negli store:** il progetto è un gruppo informale, quindi gli account sviluppatore per App Store e Google Play sono **account personali di un referente**, registrati con la **mail di progetto** tech@laviadellatrasformazione.it. Su App Store come venditore compare il nome e cognome del referente. Gli account non esistono ancora. Se in futuro nascerà un ente, Apple e Google permettono di trasferire l'app.
 - **Test prima del rilascio:** su iOS l'app viene provata da almeno **3 tester** tramite TestFlight. Su Android Google impone agli account personali nuovi un **test chiuso con almeno 12 tester iscritti per 14 giorni consecutivi** prima di poter pubblicare.
@@ -322,6 +325,8 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
 - **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. L'utente entra nel gruppo al momento della registrazione, non alla data di inizio.
 - **Utente in attesa:** non esiste. A ciclo chiuso il codice rifiuta la registrazione invece di creare un utente in attesa. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
+- **Revisione come approvazione:** il codice ha il campo `reviewedByAdmin`, ma non lo usa per decidere chi entra nel gruppo.
+- **Apertura del ciclo dall'app:** il pulsante "Apri le iscrizioni" nelle schermate admin dell'app non invia la data di chiusura e il backend risponde con un errore. Con le nuove specifiche l'apertura passa al pannello web (#34).
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa.
 - **Blocco temporaneo dell'email:** il codice blocca la registrazione di chi è rimosso fino al ciclo successivo. Le specifiche lo sostituiscono con un vincolo più stretto: la registrazione resta libera, ma chi è rimosso con una richiesta in corso non può chiedere di nuovo nello stesso ciclo.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import da CSV, il job delle 07:00 né l'interruttore nel profilo.
