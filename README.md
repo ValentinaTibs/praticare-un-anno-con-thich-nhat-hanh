@@ -57,12 +57,16 @@ Poi modifica `.env`:
 |---|---|
 | `DATABASE_URL` | Indirizzo del database. Con il container Docker: `postgresql://community:community@localhost:5432/community_app` |
 | `JWT_SECRET` | Una stringa casuale di almeno 32 caratteri, ad esempio generata con `openssl rand -hex 32` |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | La chiave di servizio Firebase su una sola riga. Vedi sotto |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | La chiave di servizio Firebase su una sola riga. Obbligatoria solo in produzione. Vedi sotto |
 | `ADMIN_CONTACT_EMAIL` | L'email di contatto mostrata agli utenti bloccati |
 
 Le altre variabili hanno già valori adatti allo sviluppo.
 
-**Chiave di servizio Firebase.** Il server non parte senza una chiave valida, nemmeno in sviluppo. Per ottenerla:
+**Chiave di servizio Firebase.** In produzione il server non parte senza una chiave valida. In sviluppo parte anche senza, e lo segnala con un avviso nel log:
+- l'accesso con Firebase risponde `503` con il codice `firebase_not_configured`; per entrare si usa `POST /api/auth/dev-login`, attivo solo con `NODE_ENV=development`;
+- le notifiche push non partono, ma le operazioni che le inviano vanno a buon fine.
+
+Per ottenere la chiave:
 
 1. Nella console Firebase apri *Impostazioni progetto*, poi *Account di servizio*.
 2. Scegli *Genera nuova chiave privata* e scarica il file JSON.

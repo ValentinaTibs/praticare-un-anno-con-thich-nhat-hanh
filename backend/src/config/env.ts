@@ -13,7 +13,9 @@ const schema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
-  FIREBASE_SERVICE_ACCOUNT_JSON: z.string(),
+  // Required in production only: without it the server still starts in
+  // development, with Firebase login and push notifications disabled.
+  FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
 
   CONFIRMATION_INTERVAL_DAYS: z.coerce.number().default(30),
   CONFIRMATION_GRACE_DAYS: z.coerce.number().default(3),

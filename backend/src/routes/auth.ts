@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
+import { FirebaseNotConfiguredError } from '../config/firebase-error.js';
 import { verifyFirebaseToken, EmailNotVerifiedError } from '../services/firebase-auth.service.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { randomUUID } from 'crypto';
@@ -180,6 +181,11 @@ async function emailFromToken(idToken: string, reply: FastifyReply): Promise<str
   } catch (err) {
     if (err instanceof EmailNotVerifiedError) {
       reply.status(403).send({ message: 'Email non verificata.', code: 'email_not_verified' });
+    } else if (err instanceof FirebaseNotConfiguredError) {
+      reply.status(503).send({
+        message: 'Accesso non disponibile: il server non ha la chiave Firebase.',
+        code: 'firebase_not_configured',
+      });
     } else {
       reply.status(401).send({ message: 'Token di accesso non valido' });
     }

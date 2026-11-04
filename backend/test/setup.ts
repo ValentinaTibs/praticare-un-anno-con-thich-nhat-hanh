@@ -4,20 +4,24 @@ import { prisma } from '../src/config/prisma.js';
 // ── Firebase (external boundary) ──────────────────────────────────────────────
 // Email auth: a token "test:<email>" verifies as that email, already verified;
 // "unverified:<email>" as that email before the user clicked the verification link.
+// "firebase-not-configured" behaves as if the server had no service account key.
 // Push: every send succeeds without reaching Google.
-vi.mock('../src/config/firebase.js', () => ({
-  firebaseAuth: {
-    verifyIdToken: vi.fn(async (idToken: string) => {
-      if (idToken.startsWith('test:')) return { email: idToken.slice('test:'.length), email_verified: true };
-      if (idToken.startsWith('unverified:')) return { email: idToken.slice('unverified:'.length), email_verified: false };
-      throw new Error('Invalid Firebase token');
-    }),
-  },
-  fcm: {
-    send: vi.fn().mockResolvedValue('message-id'),
-    sendEachForMulticast: vi.fn().mockResolvedValue({ successCount: 1, failureCount: 0, responses: [] }),
-  },
-}));
+vi.mock('../src/config/firebase.js', async () => {
+  const { FirebaseNotConfiguredError } = await import('../src/config/firebase-error.js');
+  return {
+    firebaseAuth: {
+      verifyIdToken: vi.fn(async (idToken: string) => {
+        if (idToken.startsWith('test:')) return { email: idToken.slice('test:'.length), email_verified: true };
+        if (idToken.startsWith('unverified:')) return { email: idToken.slice('unverified:'.length), email_verified: false };
+        if (idToken === 'firebase-not-configured') throw new FirebaseNotConfiguredError();
+        throw new Error('Invalid Firebase token');
+      }),
+    },
+    fcm: {
+      sendEachForMulticast: vi.fn().mockResolvedValue({ successCount: 1, failureCount: 0, responses: [] }),
+    },
+  };
+});
 
 // ── Database ──────────────────────────────────────────────────────────────────
 beforeEach(async () => {
