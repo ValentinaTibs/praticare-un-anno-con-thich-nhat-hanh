@@ -36,7 +36,7 @@ Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipend
 - **Referente del progetto**, che intesta gli account store e fa da titolare del trattamento dei dati.
 - **Account Apple Developer** personale del referente. Non serve il numero D-U-N-S.
 - **Account Google Play** personale del referente, con verifica dell'identità. Prima della pubblicazione richiede un test chiuso con 12 tester per 14 giorni.
-- **Hosting** per backend, database e pannello web.
+- **Hosting** per backend, database e pannello web: scelto **Railway** il 4 novembre, con gli ambienti di prova e di produzione. Resta da attivare l'abbonamento Hobby.
 - Casella **admin@laviadellatrasformazione.it**. Non serve un servizio di invio email.
 - **Frasi di Thich Nhat Hanh** in due file CSV, frasi dell'anno e frasi del percorso, con la verifica dei diritti d'uso.
 - **Progetto Firebase** con accesso tramite email e password attivo. I modelli delle email di verifica e di reimpostazione della password vanno tradotti in italiano.

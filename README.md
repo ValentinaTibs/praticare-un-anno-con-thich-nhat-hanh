@@ -80,13 +80,13 @@ Non caricare mai la chiave né il file `.env` nel repository.
 
 ### 4. Creare le tabelle del database
 
-La cartella delle migrazioni è ancora vuota. Il primo avvio crea la migrazione iniziale:
+Applica le migrazioni presenti in `prisma/migrations`:
 
 ```bash
-npx prisma migrate dev --name init
+npm run db:migrate
 ```
 
-Nelle esecuzioni successive basta `npm run db:migrate`.
+Lo stesso comando crea una nuova migrazione quando cambia `prisma/schema.prisma`.
 
 ### 5. Creare il Super Admin
 

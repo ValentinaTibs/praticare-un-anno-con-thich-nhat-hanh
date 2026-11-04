@@ -257,7 +257,10 @@ giorno;frase;fonte
 ### Altri requisiti
 - **Lingua:** solo italiano, in tutta l'app e nelle notifiche.
 - **Carico:** circa 100 utenti, 3-4 admin.
-- **Hosting e budget:** non ancora scelti. La scelta spetta al team.
+- **Hosting:** **Railway**, regione EU West (Amsterdam). Un progetto con due ambienti, **prova** e **produzione**, ognuno con il proprio backend, il proprio database PostgreSQL e i propri secret. La prova si aggiorna a ogni push su `main`; la produzione solo con un deploy esplicito. Entrambi gli ambienti usano `NODE_ENV=production`.
+- **Firebase:** due progetti, `la-via-trasformazione-prova` per lo sviluppo e la prova, `la-via-della-trasformazione` per la produzione. Le chiavi di produzione stanno solo nel gestore di credenziali e nelle variabili di Railway.
+- **Budget:** circa 7–12 $ al mese per i due ambienti, con un tetto fisso di 20 $ su Railway. Il primo mese è coperto dal credito di prova.
+- **Backup:** giornalieri e settimanali del database di produzione, gestiti da Railway. Prima del lancio si prova un ripristino.
 - **Pubblicazione negli store:** il progetto è un gruppo informale, quindi gli account sviluppatore per App Store e Google Play sono **account personali di un referente**, registrati con la **mail di progetto** tech@laviadellatrasformazione.it. Su App Store come venditore compare il nome e cognome del referente. Gli account non esistono ancora. Se in futuro nascerà un ente, Apple e Google permettono di trasferire l'app.
 - **Test prima del rilascio:** su iOS l'app viene provata da almeno **3 tester** tramite TestFlight. Su Android Google impone agli account personali nuovi un **test chiuso con almeno 12 tester iscritti per 14 giorni consecutivi** prima di poter pubblicare.
 
@@ -289,7 +292,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 
 ## 14. Punti aperti
 - Poteri speciali del Super Admin oltre alla gestione di cicli e ruoli: rimandato.
-- Hosting e budget.
 - **Referente del progetto:** la persona che intesta gli account store e fa da titolare del trattamento dei dati. Da scegliere.
 - Creazione degli account sviluppatore negli store. Con account personali non serve il numero D-U-N-S, ma su Android il test chiuso di 14 giorni deve partire entro il 20 novembre.
 - **Nome del percorso.** Il nome potrebbe cambiare, quindi il documento non lo fissa.
