@@ -13,6 +13,6 @@
     "emitDecoratorMetadata": true,
     "noEmit": true
   },
-  "include": ["src/**/*", "prisma/seed.ts", "test/**/*", "vitest.config.ts"],
+  "include": ["src/**/*", "prisma/seed.ts", "scripts/**/*", "test/**/*", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
