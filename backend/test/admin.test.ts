@@ -41,8 +41,8 @@ function banInTheMeantime(user: { id: string; email: string }) {
       prisma.user.update({ where: { id: user.id }, data: { status: 'banned' } }),
       prisma.bannedEmail.upsert({
         where: { email: user.email },
-        update: { permanent: true },
-        create: { email: user.email, permanent: true },
+        update: {},
+        create: { email: user.email },
       }),
     ]);
 }
@@ -122,7 +122,7 @@ describe('Gestione utenti da parte degli admin', () => {
     expect(unban.statusCode).toBe(409);
   });
 
-  it('un utente rimosso sparisce e la sua email è bloccata fino al prossimo ciclo', async () => {
+  it('un utente rimosso sparisce e può registrarsi di nuovo subito, a ciclo chiuso', async () => {
     const app = await createTestApp();
     const headers = await loginAs(app, await givenAdmin());
     const target = await givenUser();
@@ -134,8 +134,14 @@ describe('Gestione utenti da parte degli admin', () => {
     expect(lookup.statusCode).toBe(404);
 
     const login = await verifyFirebase(app, target.email);
-    expect(login.statusCode).toBe(403);
-    expect(login.json().message).toMatch(/chiuse/i);
+    expect(login.json()).toMatchObject({ status: 'register' });
+
+    const again = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { idToken: firebaseTokenFor(target.email), name: 'Anna', surname: 'Rossi', motivation: 'Ricominciare' },
+    });
+    expect(again.statusCode).toBe(201);
   });
 
   it('un utente bannato non può essere rimosso: account e blocco permanente restano', async () => {
@@ -255,7 +261,7 @@ describe('Gestione utenti da parte degli admin', () => {
     expect(remove.json().message).toBe('Un utente bannato non può essere rimosso');
 
     expect(await prisma.user.findUnique({ where: { id: target.id } })).toMatchObject({ status: 'banned' });
-    expect(await prisma.bannedEmail.findUnique({ where: { email: target.email } })).toMatchObject({ permanent: true });
+    expect(await prisma.bannedEmail.findUnique({ where: { email: target.email } })).not.toBeNull();
   });
 
   it('un ban arrivato durante una sospensione o una riattivazione non viene annullato', async () => {

@@ -5,9 +5,7 @@ import {
   createTestApp,
   givenUser,
   givenAdmin,
-  givenBlockedEmail,
   givenOpenCycle,
-  firebaseTokenFor,
   loginAs,
 } from './helpers.js';
 
@@ -120,19 +118,12 @@ describe('Cicli di registrazione', () => {
     expect(stillOpen.status).toBe('open');
   });
 
-  it('passata la data le registrazioni sono rifiutate anche prima del job', async () => {
+  it('passata la data il ciclo risulta chiuso anche prima del job', async () => {
     const app = await createTestApp();
     await givenOpenCycle(inDays(-1));
     const headers = await loginAs(app, await givenUser());
 
     expect(await cycleStatus(app, headers)).toMatchObject({ open: false });
-
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/auth/register',
-      payload: { idToken: firebaseTokenFor('anna@test.local'), name: 'Anna', surname: 'Rossi', motivation: 'Praticare' },
-    });
-    expect(res.statusCode).toBe(403);
   });
 
   it('passata la data si può aprire un nuovo ciclo anche prima del job', async () => {
@@ -145,27 +136,4 @@ describe('Cicli di registrazione', () => {
     expect(res.statusCode).toBe(201);
   });
 
-  it('aprire un ciclo sblocca le email rimosse, non quelli bannati', async () => {
-    const app = await createTestApp();
-    const headers = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
-    await givenBlockedEmail('removed@test.local', { permanent: false });
-    await givenBlockedEmail('banned@test.local', { permanent: true });
-
-    await openCycle(app, headers);
-    await app.inject({ method: 'POST', url: '/api/cycles/close', headers });
-
-    const removed = await app.inject({
-      method: 'POST',
-      url: '/api/auth/verify-firebase',
-      payload: { idToken: firebaseTokenFor('removed@test.local') },
-    });
-    expect(removed.json()).toMatchObject({ status: 'register' });
-
-    const banned = await app.inject({
-      method: 'POST',
-      url: '/api/auth/verify-firebase',
-      payload: { idToken: firebaseTokenFor('banned@test.local') },
-    });
-    expect(banned.statusCode).toBe(403);
-  });
 });

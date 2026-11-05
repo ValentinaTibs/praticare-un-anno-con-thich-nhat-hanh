@@ -369,12 +369,6 @@ class _CyclesTab extends ConsumerWidget {
                   label: const Text('Chiudi le iscrizioni'),
                   style: FilledButton.styleFrom(backgroundColor: Colors.orange),
                 ),
-              const SizedBox(height: 8),
-              if (isOpen)
-                Text(
-                  'Aprendo un nuovo ciclo si sbloccano le email degli utenti rimossi in precedenza.',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
             ],
           ),
         );

@@ -86,8 +86,8 @@ export async function adminRoutes(app: FastifyInstance) {
       }),
       prisma.bannedEmail.upsert({
         where: { email: target.email },
-        update: { permanent: true },
-        create: { email: target.email, permanent: true },
+        update: {},
+        create: { email: target.email },
       }),
     ]);
 
@@ -115,7 +115,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.send(updated);
   });
 
-  // DELETE /api/admin/:id — remove user: account deleted, email blocked until next cycle.
+  // DELETE /api/admin/:id — remove user: account deleted, email free to register again.
   // Only from active or suspended: a ban keeps the account and blocks the email for good.
   app.delete('/:id', { preHandler: adminHandler }, async (request, reply) => {
     const target = await findTarget(request);
@@ -124,17 +124,12 @@ export async function adminRoutes(app: FastifyInstance) {
 
     // All or nothing: their scheduled posts become drafts so they won't auto-publish,
     // and their sharing channel messages go with the account (cascade). If a ban arrived
-    // meanwhile, the delete matches nothing and the permanent block is left untouched.
+    // meanwhile, the delete matches nothing and the ban stays.
     await unlessChanged(
       prisma.$transaction([
         prisma.mainChannelPost.updateMany({
           where: { authorId: target.id, publishedAt: null, isDraft: false },
           data: { isDraft: true },
-        }),
-        prisma.bannedEmail.upsert({
-          where: { email: target.email },
-          update: { permanent: false },
-          create: { email: target.email, permanent: false },
         }),
         prisma.user.delete({ where: { id: target.id, status: { not: UserStatus.banned } } }),
       ]),

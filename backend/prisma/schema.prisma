@@ -191,7 +191,6 @@ model Group {
 model BannedEmail {
   id        String   @id @default(uuid())
   email     String   @unique @map("email")
-  permanent Boolean  @default(false)
   bannedAt  DateTime @default(now()) @map("banned_at")
 
   @@map("banned_emails")

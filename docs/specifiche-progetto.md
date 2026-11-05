@@ -372,12 +372,11 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
 - **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
-- **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. L'utente entra nel gruppo al momento della registrazione, non alla data di inizio.
-- **Utente in attesa:** non esiste. A ciclo chiuso il codice rifiuta la registrazione invece di creare un utente in attesa. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
+- **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. Alla registrazione l'utente non entra più in un gruppo, ma il gruppo non nasce ancora alla data di inizio: per ora nessun nuovo utente entra in un gruppo (#92).
+- **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
 - **Revisione come approvazione:** il codice ha il campo `reviewedByAdmin`, ma non lo usa per decidere chi entra nel gruppo.
 - **Apertura del ciclo dall'app:** il pulsante "Apri le iscrizioni" nelle schermate admin dell'app non invia la data di chiusura e il backend risponde con un errore. Con le nuove specifiche l'apertura passa al pannello web (#34).
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa. Per questo il pannello non mostra ancora gruppi archiviati.
-- **Blocco temporaneo dell'email:** il codice blocca la registrazione di chi è rimosso fino al ciclo successivo. Le specifiche lo sostituiscono con un vincolo più stretto: la registrazione resta libera, ma chi è rimosso con una richiesta in corso non può chiedere di nuovo nello stesso ciclo.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import e l'export in CSV, il job delle 07:00 né l'interruttore nel profilo.
 - **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.
 - **Sequenza dei post:** il codice ha un solo elenco di post, comune a tutti, programmati a una data fissa oppure pubblicati subito. Le specifiche chiedono modelli con giorno del percorso e ora, copiati nel Canale Principale di ogni gruppo al momento della pubblicazione, e niente pubblicazione immediata.

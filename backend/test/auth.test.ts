@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   createTestApp,
   givenUser,
+  givenAdmin,
   givenOpenCycle,
-  givenBlockedEmail,
+  givenBannedEmail,
   firebaseTokenFor,
   unverifiedFirebaseTokenFor,
   loginAs,
@@ -93,43 +94,24 @@ describe('POST /api/auth/verify-firebase', () => {
 
   it('un\'email bannata per sempre riceve 403 con l\'email di contatto', async () => {
     const app = await createTestApp();
-    await givenBlockedEmail('bannata@test.local', { permanent: true });
+    await givenBannedEmail('bannata@test.local');
 
     const res = await verifyFirebase(app, 'bannata@test.local');
 
     expect(res.statusCode).toBe(403);
     expect(res.json()).toMatchObject({ contact: 'admin@example.com' });
   });
-
-  it('un\'email rimossa non può rientrare a ciclo chiuso', async () => {
-    const app = await createTestApp();
-    await givenBlockedEmail('rimossa@test.local', { permanent: false });
-
-    const res = await verifyFirebase(app, 'rimossa@test.local');
-
-    expect(res.statusCode).toBe(403);
-    expect(res.json()).toMatchObject({ code: 'registrations_closed' });
-  });
-
-  it('un\'email rimossa viene mandata alla registrazione a ciclo aperto', async () => {
-    const app = await createTestApp();
-    await givenBlockedEmail('rimossa@test.local', { permanent: false });
-    await givenOpenCycle();
-
-    const res = await verifyFirebase(app, 'rimossa@test.local');
-
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ status: 'register' });
-  });
 });
 
 describe('POST /api/auth/register', () => {
-  it('a ciclo chiuso la registrazione è rifiutata', async () => {
+  it('a ciclo chiuso la registrazione riesce e l\'utente può accedere', async () => {
     const app = await createTestApp();
 
     const res = await register(app, 'anna@test.local');
+    expect(res.statusCode).toBe(201);
 
-    expect(res.statusCode).toBe(403);
+    const login = await verifyFirebase(app, 'anna@test.local');
+    expect(login.json()).toMatchObject({ status: 'ok', user: { id: res.json().user.id, status: 'active' } });
   });
 
   it('a ciclo aperto crea l\'utente, che poi può accedere', async () => {
@@ -142,6 +124,21 @@ describe('POST /api/auth/register', () => {
     const headers = await loginAs(app, { email: 'anna@test.local' });
     const me = await app.inject({ method: 'GET', url: '/api/users/me', headers });
     expect(me.json()).toMatchObject({ name: 'Anna', surname: 'Rossi', status: 'active', email: 'anna@test.local' });
+  });
+
+  it('l\'utente nasce in attesa, senza gruppo e non revisionato, anche a ciclo aperto', async () => {
+    const app = await createTestApp();
+    await givenOpenCycle();
+
+    const res = await register(app, 'anna@test.local');
+    expect(res.statusCode).toBe(201);
+
+    const me = await app.inject({ method: 'GET', url: '/api/users/me', headers: await loginAs(app, { email: 'anna@test.local' }) });
+    expect(me.json()).toMatchObject({ status: 'active', group: null });
+
+    const adminHeaders = await loginAs(app, await givenAdmin());
+    const pending = await app.inject({ method: 'GET', url: '/api/users?reviewed=false', headers: adminHeaders });
+    expect(pending.json().users.map((u: { id: string }) => u.id)).toContain(res.json().user.id);
   });
 
   it('rifiuta un token Firebase non valido', async () => {
@@ -194,17 +191,5 @@ describe('POST /api/auth/register', () => {
 
     expect((await register(app, 'anna@test.local')).statusCode).toBe(201);
     expect((await register(app, 'ANNA@test.local')).statusCode).toBe(409);
-  });
-
-  it('un\'email rimossa può registrarsi di nuovo a ciclo aperto', async () => {
-    const app = await createTestApp();
-    await givenOpenCycle();
-    await givenBlockedEmail('rimossa@test.local', { permanent: false });
-
-    const res = await register(app, 'rimossa@test.local');
-    expect(res.statusCode).toBe(201);
-
-    const login = await verifyFirebase(app, 'rimossa@test.local');
-    expect(login.json()).toMatchObject({ status: 'ok' });
   });
 });

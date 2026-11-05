@@ -30,9 +30,6 @@ String authErrorMessage(Object error) {
     };
   }
   if (error is ApiException) {
-    if (error.code == 'registrations_closed') {
-      return 'Le iscrizioni sono chiuse in questo momento. Riprova quando si apre il prossimo ciclo.';
-    }
     return error.contact != null ? '${error.message}\nContatto: ${error.contact}' : error.message;
   }
   if (error is AuthFlowException) return error.message;

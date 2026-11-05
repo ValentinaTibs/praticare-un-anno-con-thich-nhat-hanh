@@ -5,7 +5,6 @@ import {
   givenGroup,
   givenMember,
   givenOpenSharingChannel,
-  firebaseTokenFor,
   loginAs,
 } from './helpers.js';
 
@@ -15,21 +14,6 @@ type Headers = { authorization: string };
 const nextWeek = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 const openCycle = (app: App, headers: Headers) =>
   app.inject({ method: 'POST', url: '/api/cycles/open', headers, payload: { scheduledClosedAt: nextWeek() } });
-const closeCycle = (app: App, headers: Headers) =>
-  app.inject({ method: 'POST', url: '/api/cycles/close', headers });
-
-async function register(app: App, email: string, name: string) {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/register',
-    payload: { idToken: firebaseTokenFor(email), name, surname: 'Rossi', motivation: 'Voglio praticare' },
-  });
-  if (res.statusCode !== 201) throw new Error(`register failed: ${res.statusCode} ${res.body}`);
-  return { authorization: `Bearer ${res.json().accessToken}` };
-}
-
-const me = async (app: App, headers: Headers) =>
-  (await app.inject({ method: 'GET', url: '/api/users/me', headers })).json();
 
 describe('Gruppi', () => {
   it('aprire un ciclo crea un gruppo che inizia all\'apertura', async () => {
@@ -40,30 +24,6 @@ describe('Gruppi', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.json().group).toMatchObject({ startedAt: res.json().openedAt, endedAt: null });
-  });
-
-  it('chi si registra entra nel gruppo del ciclo aperto', async () => {
-    const app = await createTestApp();
-    const superAdmin = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
-    const cycle = (await openCycle(app, superAdmin)).json();
-
-    const anna = await register(app, 'anna@test.local', 'Anna');
-
-    expect((await me(app, anna)).group).toMatchObject({ id: cycle.group.id });
-  });
-
-  it('chi si registra in cicli diversi finisce in gruppi diversi', async () => {
-    const app = await createTestApp();
-    const superAdmin = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
-
-    await openCycle(app, superAdmin);
-    const anna = await register(app, 'anna@test.local', 'Anna');
-    await closeCycle(app, superAdmin);
-
-    await openCycle(app, superAdmin);
-    const marco = await register(app, 'marco@test.local', 'Marco');
-
-    expect((await me(app, anna)).group.id).not.toBe((await me(app, marco)).group.id);
   });
 
   it('gli admin vedono tutti i gruppi con il numero di membri', async () => {

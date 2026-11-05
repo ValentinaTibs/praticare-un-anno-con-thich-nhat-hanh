@@ -68,9 +68,9 @@ export async function givenGroup() {
   return cycle.group!;
 }
 
-// permanent: banned for good; otherwise removed by an admin and blocked until the next cycle.
-export async function givenBlockedEmail(email: string, { permanent }: { permanent: boolean }) {
-  return prisma.bannedEmail.create({ data: { email, permanent } });
+// An email banned for good, with no account behind it.
+export async function givenBannedEmail(email: string) {
+  return prisma.bannedEmail.create({ data: { email } });
 }
 
 // Opens the group's sharing channel directly: the spec allows only scheduled opening, which doesn't exist yet.
