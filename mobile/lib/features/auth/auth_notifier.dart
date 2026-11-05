@@ -2,10 +2,13 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_errors.dart';
 import '../../core/models/user.dart';
 import '../../core/services/push_service.dart';
 import '../../core/services/socket_service.dart';
 import '../../core/storage/token_storage.dart';
+
+export '../../core/auth/auth_errors.dart';
 
 enum AuthStatus { loading, unauthenticated, authenticated }
 
@@ -19,44 +22,6 @@ enum AuthStep {
 
   /// Verified email unknown to the backend: show the register screen.
   register,
-}
-
-/// Raised for auth problems that are not a [fb.FirebaseAuthException] nor an
-/// [ApiException] (Firebase not configured, no signed-in Firebase user).
-class AuthFlowException implements Exception {
-  final String message;
-  AuthFlowException(this.message);
-
-  @override
-  String toString() => message;
-}
-
-/// Short Italian message for any error coming out of the auth flow.
-String authErrorMessage(Object error) {
-  if (error is fb.FirebaseAuthException) {
-    return switch (error.code) {
-      'invalid-credential' ||
-      'wrong-password' ||
-      'user-not-found' ||
-      'INVALID_LOGIN_CREDENTIALS' =>
-        'Email o password non corretti.',
-      'email-already-in-use' => 'Esiste già un account con questa email.',
-      'weak-password' => 'Password troppo debole: usa almeno 6 caratteri.',
-      'invalid-email' => 'Indirizzo email non valido.',
-      'too-many-requests' => 'Troppi tentativi. Riprova tra qualche minuto.',
-      'user-disabled' => 'Questo account è stato disabilitato.',
-      'network-request-failed' => 'Errore di rete. Controlla la connessione.',
-      _ => 'Errore di autenticazione (${error.code}).',
-    };
-  }
-  if (error is ApiException) {
-    if (error.code == 'registrations_closed') {
-      return 'Le iscrizioni sono chiuse in questo momento. Riprova quando si apre il prossimo ciclo.';
-    }
-    return error.contact != null ? '${error.message}\nContatto: ${error.contact}' : error.message;
-  }
-  if (error is AuthFlowException) return error.message;
-  return 'Si è verificato un errore. Riprova.';
 }
 
 class AuthState {

@@ -316,9 +316,9 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Chiusura anticipata del cerchio:** il codice permette a un admin di chiudere il cerchio in anticipo. Le specifiche lo escludono.
 - **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio.
 - **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Manca la motivazione.
-- **Pannello web di amministrazione:** non esiste. Le schermate admin attuali sono solo nell'app mobile.
+- **Pannello web di amministrazione:** esistono la struttura e l'accesso, con le sezioni ancora vuote. Le schermate admin attuali sono ancora nell'app mobile (#27).
 - **Già allineato:** l'accesso usa email e password tramite Firebase, con email verificata obbligatoria, sia nel backend sia nell'app. Il modello utente ha il campo email e non ha più il numero di telefono.
-- **Accesso al pannello web:** il backend gestisce già l'accesso con email e password. Va costruito il pannello e il controllo del ruolo all'ingresso.
+- **Già allineato:** l'accesso al pannello web usa email e password tramite Firebase ed è riservato ad admin e Super Admin. Le voci del Super Admin si vedono solo con quel ruolo.
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
 - **Revoca del ban:** il codice non prevede di revocare un ban.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.

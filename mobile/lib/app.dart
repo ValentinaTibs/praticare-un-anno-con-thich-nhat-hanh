@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/date_symbol_data_local.dart';
-import 'package:intl/intl.dart';
 import 'features/auth/auth_notifier.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
@@ -14,12 +12,7 @@ import 'features/sharing_channel/screens/sharing_channel_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 import 'features/admin/screens/admin_screen.dart';
 
-/// The app is Italian-only: DateFormat and the Material widgets (date and time
-/// pickers included) all use this locale. Call before runApp.
-Future<void> initItalianLocale() async {
-  Intl.defaultLocale = 'it_IT';
-  await initializeDateFormatting('it_IT');
-}
+export 'core/locale.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);

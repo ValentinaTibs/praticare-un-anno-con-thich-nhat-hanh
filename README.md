@@ -1,6 +1,6 @@
 # Community App
 
-App per i partecipanti di un percorso di pratica della community "La via della trasformazione". Comprende un'app mobile per iOS e Android e un backend. Il pannello web di amministrazione è in fase di sviluppo.
+App per i partecipanti di un percorso di pratica della community "La via della trasformazione". Comprende un'app mobile per iOS e Android, un pannello web di amministrazione, ancora in sviluppo, e un backend.
 
 - Specifiche di progetto: [docs/specifiche-progetto.md](docs/specifiche-progetto.md)
 - Piano di sviluppo: [docs/piano-sviluppo.md](docs/piano-sviluppo.md)
@@ -13,7 +13,7 @@ App per i partecipanti di un percorso di pratica della community "La via della t
 | Cartella | Contenuto |
 |---|---|
 | `backend/` | Server Node.js e TypeScript con Fastify, Prisma e PostgreSQL |
-| `mobile/` | App Flutter per i partecipanti |
+| `mobile/` | App Flutter per i partecipanti e pannello web di amministrazione (`lib/panel/`) |
 | `docs/` | Specifiche e piano di sviluppo |
 
 ## Requisiti
@@ -126,7 +126,7 @@ L'app esce solo per Android e iOS. L'identificativo, uguale sulle due piattaform
 
 Firebase serve per l'accesso con email e password e per le notifiche push. Finché il progetto Firebase non esiste, l'app si avvia lo stesso, ma senza accesso e senza notifiche push.
 
-Quando il progetto sarà pronto, la configurazione si genera con `flutterfire configure` e si salva nel repository. Quei file contengono chiavi pubbliche del client, non segreti.
+La configurazione si genera con `flutterfire configure`. I file che produce (`lib/firebase_options.dart`, `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`) contengono le chiavi Firebase: git li ignora e non vanno mai aggiunti al repository, che è pubblico.
 
 ### 2. Installare le dipendenze
 
@@ -148,3 +148,50 @@ flutter run --dart-define=API_URL=http://localhost:3000
 # Telefono reale sulla stessa rete Wi-Fi: usa l'indirizzo IP del computer
 flutter run --dart-define=API_URL=http://192.168.1.10:3000
 ```
+
+## Pannello web di amministrazione
+
+Il pannello è un'app Flutter Web che vive nel progetto `mobile/`, con un punto d'ingresso suo, `lib/main_panel.dart`. Riusa modelli e chiamate al backend dell'app (`lib/core/`), ma non le sue schermate. L'app mobile, a sua volta, non contiene il codice del pannello. Tutti i comandi si lanciano dalla cartella `mobile/`.
+
+Si entra con l'email e la password dell'app. L'accesso è riservato agli utenti con ruolo admin o Super Admin, e le sezioni di cicli, ruoli e testi si vedono solo dal Super Admin.
+
+### 1. Configurazione
+
+La configurazione Firebase per il web e l'indirizzo del backend stanno in un file JSON per ambiente, in `mobile/config/`. Il file contiene le chiavi Firebase, quindi git lo ignora e non va mai aggiunto al repository. Si chiede al referente del progetto, oppure si rigenera con la CLI di Firebase:
+
+```bash
+firebase apps:sdkconfig WEB <id-app-web> --project la-via-trasformazione-prova
+```
+
+Il file `config/panel-prova.json` ha questa forma:
+
+```json
+{
+  "FIREBASE_API_KEY": "...",
+  "FIREBASE_APP_ID": "...",
+  "FIREBASE_MESSAGING_SENDER_ID": "...",
+  "FIREBASE_PROJECT_ID": "la-via-trasformazione-prova",
+  "FIREBASE_AUTH_DOMAIN": "la-via-trasformazione-prova.firebaseapp.com",
+  "FIREBASE_STORAGE_BUCKET": "...",
+  "API_URL": "http://localhost:3000"
+}
+```
+
+L'app web «Pannello admin» esiste per ora solo nel progetto Firebase di prova. Quella di produzione si crea quando il pannello va pubblicato.
+
+### 2. Avviare il pannello
+
+```bash
+flutter run -d chrome -t lib/main_panel.dart --dart-define-from-file=config/panel-prova.json
+```
+
+Con Chromium installato come snap, prima va indicato il programma: `export CHROME_EXECUTABLE=/snap/bin/chromium`.
+
+**Accesso di sviluppo.** Con il backend in sviluppo (`NODE_ENV=development`) si può entrare senza Firebase. Aggiungi `--dart-define=DEV_LOGIN=true`: nella pagina di accesso compare un pulsante che usa `POST /api/auth/dev-login` con l'email scritta nel campo. Il pulsante esiste solo nelle build di debug.
+
+### 3. Test
+
+```bash
+flutter test
+```
+
