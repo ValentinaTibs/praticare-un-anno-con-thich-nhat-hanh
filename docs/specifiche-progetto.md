@@ -316,18 +316,18 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Chiusura anticipata del cerchio:** il codice permette a un admin di chiudere il cerchio in anticipo. Le specifiche lo escludono.
 - **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio.
 - **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Manca la motivazione.
-- **Pannello web di amministrazione:** esistono la struttura e l'accesso, con le sezioni ancora vuote. Le schermate admin attuali sono ancora nell'app mobile (#27).
+- **Pannello web di amministrazione:** esistono la struttura, l'accesso e la sezione Utenti e gruppi, con gruppi e membri, ricerca, filtro dei non revisionati, motivazione, revisione, sospensione, riattivazione, ban, revoca del ban e rimozione. Le altre sezioni sono ancora vuote. Le schermate admin attuali sono ancora nell'app mobile (#27).
+- **Azioni tra admin:** le specifiche non dicono chi può intervenire su chi. Il codice permette di sospendere, riattivare, bannare, sbannare o rimuovere solo chi ha un ruolo inferiore: un admin interviene sugli utenti, il Super Admin anche sugli admin, nessuno su sé stesso. La revisione invece la può segnare qualunque admin.
 - **Già allineato:** l'accesso usa email e password tramite Firebase, con email verificata obbligatoria, sia nel backend sia nell'app. Il modello utente ha il campo email e non ha più il numero di telefono.
 - **Già allineato:** l'accesso al pannello web usa email e password tramite Firebase ed è riservato ad admin e Super Admin. Le voci del Super Admin si vedono solo con quel ruolo.
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
-- **Revoca del ban:** il codice non prevede di revocare un ban.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
 - **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
 - **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. L'utente entra nel gruppo al momento della registrazione, non alla data di inizio.
 - **Utente in attesa:** non esiste. A ciclo chiuso il codice rifiuta la registrazione invece di creare un utente in attesa. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
 - **Revisione come approvazione:** il codice ha il campo `reviewedByAdmin`, ma non lo usa per decidere chi entra nel gruppo.
 - **Apertura del ciclo dall'app:** il pulsante "Apri le iscrizioni" nelle schermate admin dell'app non invia la data di chiusura e il backend risponde con un errore. Con le nuove specifiche l'apertura passa al pannello web (#34).
-- **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa.
+- **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa. Per questo il pannello non mostra ancora gruppi archiviati.
 - **Blocco temporaneo dell'email:** il codice blocca la registrazione di chi è rimosso fino al ciclo successivo. Le specifiche lo sostituiscono con un vincolo più stretto: la registrazione resta libera, ma chi è rimosso con una richiesta in corso non può chiedere di nuovo nello stesso ciclo.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import da CSV, il job delle 07:00 né l'interruttore nel profilo.
 - **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.

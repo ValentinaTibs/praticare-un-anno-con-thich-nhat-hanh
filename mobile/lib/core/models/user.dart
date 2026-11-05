@@ -10,6 +10,9 @@ class User {
   final DateTime? lastConfirmedAt;
   final DateTime? createdAt;
 
+  /// The user's group; null while waiting for the next path.
+  final String? groupId;
+
   const User({
     required this.id,
     required this.name,
@@ -21,7 +24,10 @@ class User {
     this.motivation,
     this.lastConfirmedAt,
     this.createdAt,
+    this.groupId,
   });
+
+  bool get isWaiting => groupId == null;
 
   bool get isAdmin => role == 'admin' || role == 'super_admin';
   bool get isSuperAdmin => role == 'super_admin';
@@ -58,5 +64,7 @@ class User {
         createdAt: json['createdAt'] != null
             ? DateTime.parse(json['createdAt'] as String)
             : null,
+        // The admin list sends groupId, /api/users/me the whole group.
+        groupId: json['groupId'] as String? ?? (json['group'] as Map<String, dynamic>?)?['id'] as String?,
       );
 }

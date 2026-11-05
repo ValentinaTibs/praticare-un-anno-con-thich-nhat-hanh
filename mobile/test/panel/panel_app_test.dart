@@ -1,35 +1,20 @@
 import 'dart:io';
 
-import 'package:community_app/panel/auth/panel_auth_notifier.dart';
+import 'package:community_app/core/locale.dart';
 import 'package:community_app/panel/panel_app.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'fakes.dart';
-
-/// Starts the panel with a stored session belonging to [role], or none.
-Future<ProviderContainer> pumpPanel(WidgetTester tester, {String? role}) async {
-  tester.view.physicalSize = const Size(1400, 900);
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
-
-  final container = ProviderContainer(overrides: [
-    panelApiClientProvider.overrideWithValue(FakeApiClient({
-      if (role != null) '/api/users/me': userJson(role),
-      '/api/auth/logout': {'message': 'Disconnesso'},
-    })),
-    panelTokenStorageProvider.overrideWithValue(
-      role == null ? FakeTokenStorage() : FakeTokenStorage(access: 'a', refresh: 'r'),
-    ),
-    panelFirebaseProvider.overrideWithValue(FakePanelFirebase()),
-  ]);
-  addTearDown(container.dispose);
-  await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const PanelApp()));
-  await tester.pumpAndSettle();
-  return container;
-}
+import 'pump_panel.dart';
 
 void main() {
+  setUpAll(initItalianLocale);
+
+  testWidgets('la sezione Utenti e gruppi mostra la pagina vera, non il segnaposto', (tester) async {
+    await pumpPanel(tester, role: 'admin');
+    expect(find.text('Gruppi'), findsOneWidget);
+    expect(find.text('Utenti'), findsOneWidget);
+    expect(find.text('Questa sezione è in preparazione.'), findsNothing);
+  });
+
   testWidgets('senza sessione mostra la pagina di accesso', (tester) async {
     await pumpPanel(tester);
     expect(find.text('Accedi'), findsOneWidget);

@@ -6,8 +6,14 @@ import 'auth/login_page.dart';
 import 'auth/panel_auth_notifier.dart';
 import 'sections.dart';
 import 'shell/panel_shell.dart';
+import 'users/users_page.dart';
 
 const _loginPath = '/accesso';
+
+/// Sections whose page is ready; the others show a placeholder.
+const _sectionPages = <String, Widget>{
+  '/utenti': UsersPage(),
+};
 
 final panelRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(panelAuthProvider);
@@ -33,7 +39,7 @@ final panelRouterProvider = Provider<GoRouter>((ref) {
           for (final s in panelSections)
             GoRoute(
               path: s.path,
-              pageBuilder: (_, __) => NoTransitionPage(child: SectionPlaceholder(section: s)),
+              pageBuilder: (_, __) => NoTransitionPage(child: _sectionPages[s.path] ?? SectionPlaceholder(section: s)),
             ),
         ],
       ),
