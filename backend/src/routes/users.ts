@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { Prisma, UserStatus } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
@@ -17,6 +18,16 @@ const adminUserSelect = {
   groupId: true,
   createdAt: true,
 } as const;
+
+const usersQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.nativeEnum(UserStatus).optional(),
+  reviewed: z.enum(['true', 'false']).optional(),
+  groupId: z.string().min(1).optional(),
+  // Matches name, surname or email, ignoring case
+  q: z.string().trim().max(100).optional(),
+});
 
 export async function userRoutes(app: FastifyInstance) {
   // GET /api/users/me
@@ -52,31 +63,34 @@ export async function userRoutes(app: FastifyInstance) {
     return reply.send(user);
   });
 
-  // Admin: GET /api/users — supports ?status=&reviewed=false&groupId=
+  // Admin: GET /api/users — supports ?page=&limit=&status=&reviewed=&groupId=&q=
   app.get(
     '/',
     { preHandler: [authenticate, authorize('admin')] },
     async (request, reply) => {
-      const { page = '1', limit = '20', status, reviewed, groupId } = request.query as Record<string, string>;
-      const skip = (Number(page) - 1) * Number(limit);
+      const { page, limit, status, reviewed, groupId, q } = usersQuerySchema.parse(request.query);
 
-      const where: Record<string, unknown> = {};
+      const where: Prisma.UserWhereInput = {};
       if (status) where.status = status;
-      if (reviewed === 'false') where.reviewedByAdmin = false;
+      if (reviewed) where.reviewedByAdmin = reviewed === 'true';
       if (groupId) where.groupId = groupId;
+      if (q) {
+        const match = { contains: q, mode: 'insensitive' } as const;
+        where.OR = [{ name: match }, { surname: match }, { email: match }];
+      }
 
       const [users, total] = await Promise.all([
         prisma.user.findMany({
           where,
-          skip,
-          take: Number(limit),
+          skip: (page - 1) * limit,
+          take: limit,
           orderBy: { createdAt: 'desc' },
           select: adminUserSelect,
         }),
         prisma.user.count({ where }),
       ]);
 
-      return reply.send({ users, total, page: Number(page), limit: Number(limit) });
+      return reply.send({ users, total, page, limit });
     },
   );
 

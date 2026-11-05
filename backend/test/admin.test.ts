@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { createTestApp, givenUser, givenAdmin, firebaseTokenFor, loginAs } from './helpers.js';
+import {
+  createTestApp,
+  givenUser,
+  givenAdmin,
+  firebaseTokenFor,
+  loginAs,
+} from './helpers.js';
+
+// The actions an admin takes on someone else's account, all subject to the role check.
+function actionsOn(id: string) {
+  return [
+    ['PATCH', `/api/admin/${id}/suspend`],
+    ['PATCH', `/api/admin/${id}/reactivate`],
+    ['PATCH', `/api/admin/${id}/ban`],
+    ['DELETE', `/api/admin/${id}`],
+  ] as const;
+}
 
 function verifyFirebase(app: Awaited<ReturnType<typeof createTestApp>>, email: string) {
   return app.inject({
@@ -90,6 +106,78 @@ describe('Gestione utenti da parte degli admin', () => {
     const login = await verifyFirebase(app, target.email);
     expect(login.statusCode).toBe(403);
     expect(login.json().message).toMatch(/chiuse/i);
+  });
+
+  it('un utente bannato non può essere rimosso: account e blocco permanente restano', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser();
+    await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/ban`, headers });
+
+    const remove = await app.inject({ method: 'DELETE', url: `/api/admin/${target.id}`, headers });
+    expect(remove.statusCode).toBe(409);
+    expect(remove.json().message).toBe('Un utente bannato non può essere rimosso');
+
+    const lookup = await app.inject({ method: 'GET', url: `/api/users/${target.id}`, headers });
+    expect(lookup.json()).toMatchObject({ status: 'banned' });
+
+    const login = await verifyFirebase(app, target.email);
+    expect(login.statusCode).toBe(403);
+    expect(login.json()).toMatchObject({ contact: 'admin@example.com' });
+  });
+
+  it('un admin non può sospendere, bannare o rimuovere il Super Admin, che continua ad accedere', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const superAdmin = await givenAdmin({ role: 'super_admin' });
+
+    for (const [method, url] of actionsOn(superAdmin.id)) {
+      const res = await app.inject({ method, url, headers });
+      expect(res.statusCode, `${method} ${url}`).toBe(403);
+      expect(res.json().message).toBe('Non puoi eseguire questa azione su questo utente');
+    }
+
+    expect((await verifyFirebase(app, superAdmin.email)).statusCode).toBe(200);
+  });
+
+  it('nessuno può sospendere, bannare o rimuovere sé stesso', async () => {
+    const app = await createTestApp();
+    for (const role of ['admin', 'super_admin'] as const) {
+      const self = await givenAdmin({ role });
+      const headers = await loginAs(app, self);
+
+      for (const [method, url] of actionsOn(self.id)) {
+        const res = await app.inject({ method, url, headers });
+        expect(res.statusCode, `${role} ${method} ${url}`).toBe(403);
+      }
+      expect((await verifyFirebase(app, self.email)).statusCode).toBe(200);
+    }
+  });
+
+  it('solo il Super Admin può sospendere un admin', async () => {
+    const app = await createTestApp();
+    const target = await givenAdmin();
+
+    const asAdmin = await loginAs(app, await givenAdmin());
+    const denied = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/suspend`, headers: asAdmin });
+    expect(denied.statusCode).toBe(403);
+
+    const asSuperAdmin = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
+    const allowed = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/suspend`, headers: asSuperAdmin });
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.json()).toMatchObject({ status: 'suspended' });
+  });
+
+  it('le azioni su un utente che non esiste rispondono 404', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const missing = '00000000-0000-0000-0000-000000000000';
+
+    for (const [method, url] of [...actionsOn(missing), ['PATCH', `/api/admin/${missing}/review`] as const]) {
+      const res = await app.inject({ method, url, headers });
+      expect(res.statusCode, `${method} ${url}`).toBe(404);
+      expect(res.json().message).toBe('Elemento non trovato');
+    }
   });
 
   it('un admin segna un nuovo utente come esaminato', async () => {
