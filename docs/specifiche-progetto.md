@@ -1,7 +1,7 @@
 # Community App — Specifiche di progetto
 
 > Stato: **completa per la prima release**. Le questioni ancora da chiarire sono raccolte nella sezione 14, Punti aperti.
-> Ultimo aggiornamento: 2026-10-28
+> Ultimo aggiornamento: 2026-11-05
 
 ## 1. Visione e obiettivi
 - L'app supporta un percorso di pratica della community **"La via della trasformazione"**. Il nome del percorso potrebbe cambiare.
@@ -69,7 +69,9 @@
   - la **data di inizio** del percorso, uguale o successiva alla chiusura;
   - la **durata** del percorso in giorni, 365 se non indicata.
 - Il ciclo si chiude automaticamente alla data di chiusura. Il Super Admin può chiuderlo prima.
-- Fino al giorno di inizio il Super Admin può spostare la data di chiusura e la data di inizio. Se cambia la data di inizio, chi ha chiesto di partecipare riceve una notifica.
+- Fino al giorno di inizio il Super Admin può modificare la data di chiusura, la data di inizio e la durata del percorso. Dopo l'inizio non si può modificare nulla.
+- Se cambia la data di inizio, chi ha chiesto di partecipare riceve una notifica.
+- Nella prima release un ciclo non si può annullare. Per rinviare il percorso si sposta la data di inizio.
 - All'apertura del ciclo tutti gli utenti in attesa ricevono una notifica, ad esempio "Sono aperte le richieste per il percorso che inizia il 12 gennaio".
 - A ciclo chiuso il pulsante "Chiedi di partecipare" è disattivato e l'app mostra un messaggio. Il Super Admin può modificarne il testo dal pannello web.
 
@@ -117,6 +119,12 @@ PARTECIPANTE ──(fine del percorso)──► IN ATTESA
 - Alla riattivazione, l'utente è considerato in regola con l'ultimo round di conferma senza fare altro.
 - Alla revoca del ban, l'utente torna attivo e la sua email esce dall'elenco delle email bloccate.
 
+**Chi può intervenire su chi**
+- Sospensione, ban e rimozione si fanno solo su chi ha un **ruolo più basso**. Un admin interviene sugli utenti, il Super Admin anche sugli admin. La revoca del ban resta riservata al Super Admin, sugli utenti e sugli admin. Nessuno interviene su sé stesso né sul Super Admin.
+- La **riattivazione** la può fare qualunque admin su chiunque, anche su un altro admin o sul Super Admin sospeso, ma non su sé stesso.
+- Nessuno può segnare come revisionato il **proprio account**.
+- Nella prima release non c'è un registro delle azioni degli admin.
+
 ### 6.2 Uscita dalla community
 | Caso | Chi lo decide | Account | Email |
 |---|---|---|---|
@@ -142,47 +150,76 @@ ATTIVO o SOSPESO ──(rimozione admin / cancellazione utente)──► account
 ```
 
 ## 7. Conferma periodica di appartenenza
-- Un admin avvia una **richiesta di conferma** indicando una data di inizio e una durata, ad esempio "entro una settimana dal 1° novembre".
+- Un admin avvia una **richiesta di conferma** scegliendo il gruppo, la **data di inizio** e la **durata** in giorni.
+- La data di inizio è oggi o una data futura, mai passata.
+- La **scadenza** è alle **23:59 ora italiana dell'ultimo giorno**. Ad esempio "7 giorni dal 1° novembre" scade il 7 novembre alle 23:59.
 - Ogni richiesta è un **round** che coinvolge **tutti gli utenti attivi del gruppo** insieme. Non si inviano richieste a singole persone.
-- Un round avviato **non si può annullare**.
+- Un round si può **modificare o annullare finché non è iniziato**. Una volta iniziato non si può più cambiare né annullare.
 - Ogni round riguarda **un gruppo**. Può esserci un round in corso per ogni gruppo attivo.
+- **Admin e Super Admin** sono esclusi dai round: non li ricevono e non possono essere sospesi per mancata conferma.
 - Gli **utenti in attesa** non ricevono round di conferma e non possono essere sospesi per mancata conferma.
-- L'utente riceve due **promemoria** con notifica push: 3 giorni prima della scadenza e il giorno della scadenza.
-- Se non conferma entro la scadenza, l'account viene sospeso. Solo un admin può riattivarlo.
+- Alla data di inizio l'utente riceve la richiesta con una notifica push. Poi riceve due **promemoria**: 3 giorni prima della scadenza e il giorno della scadenza.
+- Se non conferma entro la scadenza, l'account viene sospeso. Solo un admin può riattivarlo. Alla riattivazione l'utente è in regola con il round (sezione 6.1).
+- Nel pannello lo **stato del round** mostra la scadenza, chi ha confermato con la data e chi non ancora. È solo consultazione: nessuno può segnare a mano una conferma.
 - I nuovi partecipanti entrano in un gruppo solo alla data di inizio di un percorso.
 
 ## 8. Canale Principale
 - Canale di comunicazione degli admin verso un gruppo. **Ogni gruppo ha il proprio** Canale Principale.
-- Gli admin preparano una **sequenza unica di post programmati**, ad esempio il percorso di un anno. Ogni gruppo riceve la stessa sequenza a partire dalla propria data di inizio.
-- Ogni post della sequenza si programma per **giorno dall'inizio del gruppo**, ad esempio "giorno 15".
-- Nella prima release tutti i gruppi ricevono solo la sequenza. Non si pubblicano contenuti per un solo gruppo.
-- I post possono essere bozze, pubblicati subito o programmati.
-- Gli admin possono **modificare e cancellare** anche i post già pubblicati.
-- Se un admin viene rimosso, i suoi post pubblicati restano senza autore. Quelli programmati tornano bozze finché un altro admin non li recupera.
 - Gli utenti sono in **sola lettura**.
-- Gli admin pubblicano testi che possono contenere link. Immagini e audio sono inseriti anch'essi come link esterni, senza caricamento di file nell'app.
 
-**Release successive:** reazioni ai post con un set ristretto di emoticon scelte.
+### Sequenza e modelli
+- Gli admin preparano una **sequenza unica di modelli** di post, ad esempio il percorso di un anno. La stessa sequenza vale per tutti i gruppi, ognuno a partire dalla propria data di inizio.
+- Ogni modello ha un **giorno del percorso**, ad esempio "giorno 15", e un'**ora** in ora italiana. L'ora è preimpostata alle 08:00 e si può cambiare per ogni modello.
+- Un modello ha due soli stati: **bozza** oppure **in sequenza al giorno N**. Le bozze non vengono pubblicate.
+- Nella prima release non c'è la pubblicazione immediata e non si scrivono post per un solo gruppo: tutto passa dalla sequenza. Fa eccezione l'annuncio del cerchio (sezione 9).
+
+### Pubblicazione
+- Quando un gruppo raggiunge il giorno N all'ora del modello, il modello viene **copiato** nel Canale Principale del gruppo e pubblicato.
+- La copia nasce solo al momento della pubblicazione. Nei gruppi non esistono copie in attesa.
+- Alla pubblicazione tutti i membri attivi del gruppo ricevono una **notifica push** con titolo «Canale Principale» e, come testo, l'inizio del post (circa 100 caratteri). Questa notifica non si può disattivare.
+- Un modello aggiunto o modificato vale solo per i gruppi che non hanno ancora raggiunto quel giorno. Chi l'ha già superato non riceve nulla.
+- Se il server è spento all'ora prevista, alla ripartenza pubblica i post arretrati. La notifica parte solo se è ancora lo stesso giorno.
+
+### Post pubblicati
+- Le copie pubblicate vivono per conto loro. Gli admin le **modificano o cancellano** solo nel loro gruppo.
+- Modificare una copia già pubblicata non manda notifiche.
+- Modificare o cancellare un modello non tocca le copie già pubblicate.
+
+### Formato e autore
+- I post sono **testo semplice**, senza formattazione. I link vengono riconosciuti e sono cliccabili nell'app.
+- Immagini e audio si inseriscono come link esterni nel testo, senza caricamento di file nell'app.
+- Il pannello mostra un'**anteprima** del post come apparirà nell'app.
+- I partecipanti **non vedono l'autore** dei post. L'autore si vede solo nel pannello.
+- Se un admin viene rimosso, i suoi modelli e le sue copie restano dove sono, senza autore. Le bozze restano bozze.
+
+**Release successive:** reazioni ai post con un set ristretto di emoticon scelte; pubblicazione immediata nei gruppi scelti e programmazione a una data e ora precise.
 
 ## 9. Canale di Condivisione
 - Funziona come un **cerchio di condivisione**: i partecipanti inviano messaggi al gruppo.
 - Ha un orario di apertura e uno di chiusura. I messaggi sono visibili solo mentre il canale è aperto.
 - **Ogni gruppo ha il proprio cerchio.** Nella prima release tutti i cerchi seguono la **stessa programmazione**.
-- Un admin imposta una **programmazione settimanale**, ad esempio ogni sabato mattina, con **durata fissa**. Il cerchio si apre e si chiude automaticamente.
+- Un admin imposta **un solo appuntamento settimanale**: giorno della settimana, ora di inizio e durata, in ora italiana. Ad esempio ogni sabato alle 9:00 per un'ora. Il cerchio si apre e si chiude automaticamente.
+- Se la programmazione cambia mentre un cerchio è aperto, quel cerchio finisce all'orario previsto. La modifica vale dal cerchio successivo.
 - Non esistono cerchi straordinari fuori programma e non si possono saltare singole date.
 - I messaggi sono **solo testo**. Una volta inviati non si possono modificare né cancellare da chi li ha scritti.
 - Nella prima release la cadenza è **settimanale**. In una release successiva la cadenza sarà configurabile dagli admin, anche in modo diverso per ogni gruppo.
 - Alla chiusura **i messaggi vengono cancellati** definitivamente.
-- Si chiude automaticamente all'orario di chiusura. Un avviso di chiusura imminente parte 15 minuti prima, configurabile.
+- Si chiude automaticamente all'orario di chiusura. Un avviso di chiusura imminente parte 15 minuti prima. I minuti si impostano nella configurazione del server, non nel pannello.
 - **Non è possibile la chiusura anticipata:** il cerchio dura sempre quanto stabilito dalla programmazione.
-- All'apertura compare un **post nel Canale Principale** che annuncia il round del cerchio. Chi tocca l'ingresso in quel post entra nel cerchio e può leggere e scrivere. Il tocco vale come consenso.
+- All'apertura compare un **post nel Canale Principale** del gruppo che annuncia il cerchio. È un post del solo gruppo, senza modello nella sequenza (sezione 8).
+- All'apertura i membri attivi del gruppo ricevono la notifica push «Il cerchio è aperto».
+- Chi tocca l'ingresso nel post di annuncio entra nel cerchio e può leggere e scrivere. Il tocco vale come consenso.
 - Il post di annuncio resta nel Canale Principale anche dopo la chiusura. In una release successiva verrà rimosso automaticamente.
 - Nella prima release non ci sono limiti di lunghezza, né per i messaggi del cerchio né per i post del Canale Principale.
 - Tutti gli utenti attivi possono entrare.
 - Si può uscire e rientrare. Al rientro non si vede lo storico, solo i messaggi da quel momento.
 - Ogni messaggio mostra **nome e cognome** di chi scrive.
 - I partecipanti vedono **quante persone** hanno partecipato al cerchio, non l'elenco dei nomi.
-- Gli admin possono cancellare messaggi e vedere i membri.
+- Gli admin **moderano dal pannello**:
+  - vedono l'elenco dei cerchi aperti;
+  - per ogni cerchio vedono membri e messaggi, aggiornati ogni 10 secondi e con un pulsante «Aggiorna»;
+  - cancellano un messaggio con il pulsante «Cancella».
+- La moderazione non è in tempo reale.
 
 
 ## 10. Frase del giorno e notifiche
@@ -208,6 +245,7 @@ ATTIVO o SOSPESO ──(rimozione admin / cancellazione utente)──► account
   - `fonte` è facoltativa: il libro, ed eventualmente la pagina, da cui viene la frase.
 - L'import **aggiorna o inserisce** riga per riga in base al giorno. Le frasi assenti dal file restano come sono.
 - Prima di salvare, il pannello mostra un'**anteprima** con gli errori: giorni duplicati, date o numeri non validi, frasi vuote. Se c'è anche un solo errore non si salva nulla.
+- Ogni elenco ha anche un pulsante **«Scarica CSV»**, che esporta le frasi nello stesso formato dell'import.
 
 Esempio per le frasi dell'anno:
 ```
@@ -226,8 +264,11 @@ giorno;frase;fonte
 | Frase del giorno | Utenti attivi con l'interruttore "Frase del giorno" attivo | Ogni giorno alle 07:00 |
 | Apertura di un ciclo | Tutti gli utenti in attesa | All'apertura |
 | Cambio della data di inizio | Chi ha chiesto di partecipare | Alla modifica |
+| Nuovo post nel Canale Principale | Membri attivi del gruppo | Alla pubblicazione, con titolo «Canale Principale» e l'inizio del post. I post arretrati la mandano solo se è ancora lo stesso giorno |
+| Richiesta di conferma | Membri attivi del gruppo, esclusi admin e Super Admin | Alla data di inizio del round |
 | Promemoria della conferma | Membri del gruppo che non hanno ancora confermato | 3 giorni prima della scadenza e il giorno della scadenza |
-| Chiusura imminente del cerchio | Chi è nel cerchio | 15 minuti prima della chiusura, configurabile |
+| Apertura del cerchio | Membri attivi del gruppo | All'apertura, con il testo «Il cerchio è aperto» |
+| Chiusura imminente del cerchio | Chi è nel cerchio | 15 minuti prima della chiusura, configurabile nel server |
 
 - Altri eventi, l'invio di email e l'orario della frase scelto da ogni utente sono rimandati alle release successive.
 
@@ -246,23 +287,27 @@ giorno;frase;fonte
 - **Pannello di amministrazione:** per ora **tutta l'amministrazione avviene da web**, con **Flutter Web**. In una release successiva sarà disponibile anche dall'app.
 
 ### Funzioni del pannello web
-- Gestione utenti: revisione, sospensione, riattivazione, ban, revoca del ban, rimozione.
-- Sequenza dei post del Canale Principale: bozze, pubblicazione, programmazione relativa all'inizio del gruppo.
-- Programmazione del cerchio.
-- Round di conferma di appartenenza, per gruppo.
+- Gestione utenti: revisione, sospensione, riattivazione, ban, revoca del ban, rimozione, con le regole tra admin della sezione 6.1.
+- Canale Principale, in due viste:
+  - **«Sequenza»**: i modelli ordinati per giorno e ora, comprese le bozze, con creazione, modifica e cancellazione;
+  - **«Post dei gruppi»**: scelto un gruppo, attivo o archiviato, i suoi post pubblicati, che si modificano e cancellano solo qui.
+  - In entrambe le viste l'anteprima mostra il post come apparirà nell'app.
+- Cerchio: programmazione settimanale con giorno, ora di inizio e durata; moderazione dei cerchi aperti (sezione 9).
+- Round di conferma di appartenenza, per gruppo: creazione, modifica e annullamento finché il round non è iniziato; stato del round in sola consultazione.
 - Gruppi: elenco dei gruppi, attivi e archiviati, e dei loro membri.
 - Utenti in attesa: elenco degli utenti in attesa e dei richiedenti del prossimo percorso, con la motivazione.
-- Frasi dell'anno e frasi del percorso, con import da CSV.
-- Cicli, solo per il Super Admin: apertura con data di chiusura, data di inizio e durata del percorso; modifica delle date fino all'inizio; chiusura anticipata.
+- Frasi dell'anno e frasi del percorso, con import da CSV ed export nello stesso formato.
+- Cicli, solo per il Super Admin: apertura con data di chiusura, data di inizio e durata del percorso; modifica di date e durata fino all'inizio; chiusura anticipata.
 - Gestione dei ruoli, solo per il Super Admin.
 - Testi dei messaggi per sospesi, bannati e richieste a ciclo chiuso, ed email di contatto, solo per il Super Admin.
 
 ### Altri requisiti
 - **Lingua:** solo italiano, in tutta l'app e nelle notifiche.
 - **Carico:** circa 100 utenti, 3-4 admin.
-- **Hosting:** **Railway**, regione EU West (Amsterdam). Un progetto con due ambienti, **prova** e **produzione**, ognuno con il proprio backend, il proprio database PostgreSQL e i propri secret. La prova si aggiorna a ogni push su `main`; la produzione solo con un deploy esplicito. Entrambi gli ambienti usano `NODE_ENV=production`.
+- **Hosting di backend e database:** **Railway**, regione EU West (Amsterdam). Un progetto con due ambienti, **prova** e **produzione**, ognuno con il proprio backend, il proprio database PostgreSQL e i propri secret. La prova si aggiorna a ogni push su `main`; la produzione solo con un deploy esplicito. Entrambi gli ambienti usano `NODE_ENV=production`.
+- **Hosting del pannello web:** **Firebase Hosting**, con un sito in ciascuno dei due progetti Firebase, prova e produzione. Il dominio personalizzato, ad esempio admin.laviadellatrasformazione.it, si collega più avanti.
 - **Firebase:** due progetti, `la-via-trasformazione-prova` per lo sviluppo e la prova, `la-via-della-trasformazione` per la produzione. Le chiavi di produzione stanno solo nel gestore di credenziali e nelle variabili di Railway.
-- **Budget:** circa 7–12 $ al mese per i due ambienti, con un tetto fisso di 20 $ su Railway. Il primo mese è coperto dal credito di prova.
+- **Budget:** circa 7–12 $ al mese per i due ambienti, con un tetto fisso di 20 $ su Railway. Il primo mese è coperto dal credito di prova. Per il pannello su Firebase Hosting si stima che il traffico resti nella quota gratuita; da verificare.
 - **Backup:** giornalieri e settimanali del database di produzione, gestiti da Railway. Prima del lancio si prova un ripristino.
 - **Pubblicazione negli store:** il progetto è un gruppo informale, quindi gli account sviluppatore per App Store e Google Play sono **account personali di un referente**, registrati con la **mail di progetto** tech@laviadellatrasformazione.it. Su App Store come venditore compare il nome e cognome del referente. Gli account non esistono ancora. Se in futuro nascerà un ente, Apple e Google permettono di trasferire l'app.
 - **Test prima del rilascio:** su iOS l'app viene provata da almeno **3 tester** tramite TestFlight. Su Android Google impone agli account personali nuovi un **test chiuso con almeno 12 tester iscritti per 14 giorni consecutivi** prima di poter pubblicare.
@@ -273,7 +318,8 @@ Funzionalità escluse dalla prima release e già decise per il futuro.
 | Area | Funzionalità | Riferimento |
 |---|---|---|
 | Canale Principale | Reazioni ai post con un set ristretto di emoticon | Sezione 8 |
-| Canale Principale | Contenuti extra fuori sequenza, inviati a un solo gruppo | Sezione 8 |
+| Canale Principale | Pubblicazione immediata di un post fuori sequenza nei gruppi scelti, anche a un solo gruppo | Sezione 8 |
+| Canale Principale | Programmazione di un post fuori sequenza a una data e ora precise | Sezione 8 |
 | Canale di Condivisione | Cadenza del cerchio configurabile dagli admin, oltre a quella settimanale | Sezione 9 |
 | Canale di Condivisione | Programmazione del cerchio diversa per ogni gruppo | Sezione 9 |
 | Canale di Condivisione | Rimozione automatica del post di annuncio dopo la chiusura del cerchio | Sezione 9 |
@@ -281,6 +327,7 @@ Funzionalità escluse dalla prima release e già decise per il futuro.
 | Profilo | Cambio dell'email | Sezione 4 |
 | Notifiche | Altri eventi e altri canali di notifica, compresa l'email | Sezione 10 |
 | Cicli | Promemoria agli utenti in attesa prima della chiusura delle richieste | Sezione 5 |
+| Cicli | Annullamento di un ciclo: le richieste decadono e il gruppo non nasce | Sezione 5 |
 | Frase del giorno | Orario della notifica scelto da ogni utente | Sezione 10 |
 | Frase del giorno | Archivio delle frasi passate | Sezione 10 |
 | Frase del giorno | Frasi del percorso diverse per gruppo | Sezione 10 |
@@ -289,7 +336,6 @@ Funzionalità escluse dalla prima release e già decise per il futuro.
 Fanno parte della prima release, ma possono essere rimandate per rispettare la data del 26 dicembre.
 
 - **Modifica dei testi per sospesi, bannati e richieste a ciclo chiuso.** Se slitta, i testi restano fissi.
-- **Revoca del ban dal pannello.** Se slitta, la revoca si fa a mano sul database su richiesta del Super Admin.
 
 La **cancellazione autonoma dell'account non può slittare**. Apple chiede che le app con registrazione permettano di cancellare l'account dall'interno dell'app, e Google Play ha un requisito simile. Senza questa funzione l'app rischia di essere rifiutata dagli store.
 
@@ -300,10 +346,13 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Nome del percorso.** Il nome potrebbe cambiare, quindi il documento non lo fissa.
 - **Diritti sulle frasi di Thich Nhat Hanh.** Il gruppo di progetto deve verificare che l'invio quotidiano delle frasi sia consentito.
 ## 15. Differenze tra specifiche e codice attuale
-- **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti data di inizio e durata.
+- **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti per ogni gruppo data di inizio e durata, con scadenza alle 23:59 dell'ultimo giorno, e che possa modificare o annullare il round finché non è iniziato.
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
-- **Date del ciclo:** il codice gestisce la data di chiusura e la chiusura automatica, ma non la data di inizio del percorso né la durata. Il gruppo nasce all'apertura del ciclo invece che alla data di inizio, e le date non si possono modificare.
-- **Programmazione ricorrente del cerchio:** il codice prevede solo l'apertura manuale da parte di un admin.
+- **Già allineato:** i round di conferma escludono già admin e Super Admin.
+- **Date del ciclo:** il codice gestisce la data di chiusura e la chiusura automatica, ma non la data di inizio del percorso né la durata. Il gruppo nasce all'apertura del ciclo invece che alla data di inizio, e né le date né la durata si possono modificare.
+- **Programmazione ricorrente del cerchio:** il codice prevede solo l'apertura manuale da parte di un admin. Le specifiche chiedono un appuntamento settimanale con giorno, ora di inizio e durata, uguale per tutti i gruppi.
+- **Moderazione del cerchio:** il backend permette a un admin di scegliere il gruppo con `?groupId=` e di vederne i membri, ma per leggere i messaggi deve entrare nel cerchio. Non c'è un elenco dei cerchi aperti di tutti i gruppi. Per il pannello servono questo elenco e, per ogni cerchio, i messaggi senza entrarci.
+- **Avviso di chiusura del cerchio:** il codice lo manda a tutti i membri del gruppo. Le specifiche lo mandano solo a chi è nel cerchio.
 - **Già allineato:** la cancellazione dei messaggi alla chiusura del cerchio è già implementata.
 - **Lingua delle notifiche:** i testi delle notifiche nel codice sono in inglese.
 - **Contenuti del cerchio:** il codice accetta anche un link a media nei messaggi. Le specifiche chiedono solo testo.
@@ -314,10 +363,10 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Account Firebase alla rimozione:** la rimozione da parte di un admin elimina l'utente dal database ma lascia il suo account di accesso in Firebase.
 - **Informativa privacy:** la registrazione non chiede di accettarla.
 - **Chiusura anticipata del cerchio:** il codice permette a un admin di chiudere il cerchio in anticipo. Le specifiche lo escludono.
-- **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio.
+- **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio. La push di apertura parte già, ma con il testo «Canale di condivisione aperto».
 - **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Manca la motivazione.
 - **Pannello web di amministrazione:** esistono la struttura, l'accesso e la sezione Utenti e gruppi, con gruppi e membri, ricerca, filtro dei non revisionati, motivazione, revisione, sospensione, riattivazione, ban, revoca del ban e rimozione. Le altre sezioni sono ancora vuote. Le schermate admin attuali sono ancora nell'app mobile (#27).
-- **Azioni tra admin:** le specifiche non dicono chi può intervenire su chi. Il codice permette di sospendere, bannare, sbannare o rimuovere solo chi ha un ruolo inferiore: un admin interviene sugli utenti, il Super Admin anche sugli admin, nessuno su sé stesso. La riattivazione invece la può fare qualunque admin su chiunque, anche su un altro admin o sul Super Admin, perché le specifiche la affidano a «un admin» e chi è sospeso non può riattivarsi da solo. Anche la revisione la può segnare qualunque admin, ma non sul proprio account.
+- **Già allineato:** le regole su chi può intervenire su chi (sezione 6.1) sono già implementate nel backend e nel pannello.
 - **Già allineato:** l'accesso usa email e password tramite Firebase, con email verificata obbligatoria, sia nel backend sia nell'app. Il modello utente ha il campo email e non ha più il numero di telefono.
 - **Già allineato:** l'accesso al pannello web usa email e password tramite Firebase ed è riservato ad admin e Super Admin. Le voci del Super Admin si vedono solo con quel ruolo.
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
@@ -329,7 +378,11 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Apertura del ciclo dall'app:** il pulsante "Apri le iscrizioni" nelle schermate admin dell'app non invia la data di chiusura e il backend risponde con un errore. Con le nuove specifiche l'apertura passa al pannello web (#34).
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa. Per questo il pannello non mostra ancora gruppi archiviati.
 - **Blocco temporaneo dell'email:** il codice blocca la registrazione di chi è rimosso fino al ciclo successivo. Le specifiche lo sostituiscono con un vincolo più stretto: la registrazione resta libera, ma chi è rimosso con una richiesta in corso non può chiedere di nuovo nello stesso ciclo.
-- **Frase del giorno:** non esistono gli elenchi delle frasi, l'import da CSV, il job delle 07:00 né l'interruttore nel profilo.
+- **Frase del giorno:** non esistono gli elenchi delle frasi, l'import e l'export in CSV, il job delle 07:00 né l'interruttore nel profilo.
 - **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.
-- **Sequenza unica dei post:** il codice programma ogni post a una data fissa. Le specifiche chiedono un giorno relativo all'inizio del gruppo.
+- **Sequenza dei post:** il codice ha un solo elenco di post, comune a tutti, programmati a una data fissa oppure pubblicati subito. Le specifiche chiedono modelli con giorno del percorso e ora, copiati nel Canale Principale di ogni gruppo al momento della pubblicazione, e niente pubblicazione immediata.
+- **Notifica dei post:** il codice manda la push «Nuovo post» a tutti gli utenti. Le specifiche chiedono il titolo «Canale Principale», solo ai membri attivi del gruppo, e per i post arretrati solo se è ancora lo stesso giorno.
+- **Link a media nei post:** il modello dei post ha il campo `mediaUrl`. Le specifiche lo eliminano: immagini e audio sono link nel testo.
+- **Autore dei post:** l'app mostra nome e cognome dell'autore di ogni post del Canale Principale. Le specifiche lo mostrano solo nel pannello.
+- **Post di un admin rimosso:** alla rimozione il codice riporta a bozza i post programmati dell'admin. Le specifiche lasciano modelli e copie come sono, senza autore.
 - **Messaggi modificabili:** non esiste un modo per far modificare al Super Admin i testi per sospesi e bannati.

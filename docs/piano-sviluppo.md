@@ -2,7 +2,7 @@
 
 > Obiettivo: pubblicare la prima release negli store il **26 dicembre 2026**.
 > Riferimento: [specifiche-progetto.md](specifiche-progetto.md), in particolare la sezione 15 con le differenze tra specifiche e codice.
-> Redatto il 2026-10-16. Aggiornato il 2026-10-28 con l'utente in attesa e la frase del giorno.
+> Redatto il 2026-10-16. Aggiornato il 2026-10-28 con l'utente in attesa e la frase del giorno, e il 2026-11-05 con le decisioni sul pannello e con Firebase Hosting.
 
 ## In sintesi
 - Mancano **10 settimane** al rilascio.
@@ -36,7 +36,8 @@ Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipend
 - **Referente del progetto**, che intesta gli account store e fa da titolare del trattamento dei dati.
 - **Account Apple Developer** personale del referente. Non serve il numero D-U-N-S.
 - **Account Google Play** personale del referente, con verifica dell'identità. Prima della pubblicazione richiede un test chiuso con 12 tester per 14 giorni.
-- **Hosting** per backend, database e pannello web: scelto **Railway** il 4 novembre, con gli ambienti di prova e di produzione. Resta da attivare l'abbonamento Hobby.
+- **Hosting** per backend e database: scelto **Railway** il 4 novembre, con gli ambienti di prova e di produzione. Resta da attivare l'abbonamento Hobby.
+- **Hosting del pannello web** su **Firebase Hosting**, con un sito nel progetto di prova e uno in quello di produzione. Il dominio personalizzato, ad esempio admin.laviadellatrasformazione.it, si collega più avanti.
 - Casella **admin@laviadellatrasformazione.it**. Non serve un servizio di invio email.
 - **Frasi di Thich Nhat Hanh** in due file CSV, frasi dell'anno e frasi del percorso, con la verifica dei diritti d'uso.
 - **Progetto Firebase** con accesso tramite email e password attivo. I modelli delle email di verifica e di reimpostazione della password vanno tradotti in italiano.
@@ -47,38 +48,39 @@ Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipend
 Va fatta per prima, perché tutto il resto dipende da qui.
 
 - **Riallineare l'accesso.** Fatto: l'app accede con email e password tramite Firebase e invia il token al backend. Resta da eliminare il vecchio codice di Socket.IO dall'app.
-- **Cicli.** Il Super Admin imposta data di chiusura delle richieste, data di inizio e durata del percorso. Il ciclo si chiude da solo e le date si possono spostare fino all'inizio.
+- **Cicli.** Il Super Admin imposta data di chiusura delle richieste, data di inizio e durata del percorso. Il ciclo si chiude da solo e date e durata si possono modificare fino all'inizio. Nessun annullamento del ciclo nella prima release.
 - **Utente in attesa.** La registrazione è sempre aperta e crea un utente senza gruppo. Mentre il ciclo è aperto l'utente chiede di partecipare o annulla la richiesta. Gli utenti in attesa vedono quanti sono i richiedenti.
-- **Gruppi.** Il gruppo nasce alla data di inizio con tutti i richiedenti, e finisce dopo la durata impostata riportando i membri in attesa.
+- **Gruppi.** Il gruppo nasce alla data di inizio con i richiedenti revisionati, e finisce dopo la durata impostata riportando i membri in attesa.
 - **Blocco temporaneo.** Si elimina: chi è rimosso o cancella l'account può registrarsi di nuovo subito. Resta solo il ban.
 - **Registrazione.** Si aggiunge l'accettazione dell'informativa privacy. L'email c'è già, perché è anche il dato di accesso.
 
 ### Fase 2 — Funzionalità del backend (settimane 3–5)
-- **Canale Principale.** Sequenza unica di post programmati per giorno dall'inizio del gruppo. Ogni gruppo vede la sequenza secondo la propria data di inizio.
-- **Conferme.** Round per gruppo, avviato da un admin con data di inizio e durata. Due promemoria e sospensione automatica alla scadenza. Un round non si annulla.
-- **Cerchio.** Un cerchio per gruppo, con programmazione settimanale comune e durata fissa. Apertura e chiusura automatiche, annuncio nel Canale Principale, solo testo. Al rientro si vedono solo i messaggi nuovi. Gli utenti vedono il numero di partecipanti. Si eliminano l'apertura e la chiusura manuali.
-- **Stati dell'utente.** Revoca del ban da parte del Super Admin.
-- **Frase del giorno.** Elenchi delle frasi dell'anno e del percorso, con import da CSV validato. Job alle 07:00 che invia a ciascuno la frase giusta. Interruttore "Frase del giorno" nel profilo.
+- **Canale Principale.** Sequenza unica di modelli, ognuno con giorno del percorso e ora. Quando un gruppo raggiunge il giorno e l'ora, il modello viene copiato nel suo Canale Principale e pubblicato, con una push ai membri. Alla ripartenza del server si pubblicano i post arretrati. Testo semplice con link, senza `mediaUrl` e senza autore visibile in app. Si elimina la pubblicazione immediata.
+- **Conferme.** Round per gruppo, avviato da un admin con data di inizio e durata, con scadenza alle 23:59 dell'ultimo giorno. Si modifica o si annulla solo prima dell'inizio. Notifica all'inizio, due promemoria e sospensione automatica alla scadenza. Admin e Super Admin esclusi.
+- **Cerchio.** Un cerchio per gruppo, con un appuntamento settimanale comune: giorno, ora di inizio e durata. Apertura e chiusura automatiche, annuncio nel Canale Principale e push «Il cerchio è aperto». Messaggi solo testo. Elenco dei cerchi aperti di tutti i gruppi per la moderazione dal pannello. Al rientro si vedono solo i messaggi nuovi. Gli utenti vedono il numero di partecipanti. Si eliminano l'apertura e la chiusura manuali.
+- **Stati dell'utente.** Revoca del ban da parte del Super Admin. Fatto.
+- **Frase del giorno.** Elenchi delle frasi dell'anno e del percorso, con import da CSV validato ed export nello stesso formato. Job alle 07:00 che invia a ciascuno la frase giusta. Interruttore "Frase del giorno" nel profilo.
 - **Notifiche dei cicli.** Push agli utenti in attesa all'apertura del ciclo e ai richiedenti se cambia la data di inizio.
 - **Cancellazione account.** L'utente cancella il proprio account dall'app. Viene eliminato anche il suo account di accesso in Firebase, come nella rimozione da parte di un admin.
 - **Testi.** Tutti i messaggi in italiano. Il Super Admin può modificare i testi per sospesi, bannati e ciclo chiuso.
 
 ### Fase 3 — Pannello web (settimane 3–7)
-Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile.
+Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile. Si pubblica su Firebase Hosting, un sito per la prova e uno per la produzione.
 
 1. Accesso con email e password, riservato ad admin e Super Admin.
-2. Utenti e gruppi: elenco, revisione, sospensione, riattivazione, ban, revoca del ban, rimozione.
-3. Sequenza dei post del Canale Principale.
-4. Round di conferma per gruppo.
-5. Programmazione del cerchio.
+2. Utenti e gruppi: elenco, revisione, sospensione, riattivazione, ban, revoca del ban, rimozione, con le regole tra admin. In gran parte fatto (#29).
+3. Canale Principale in due viste: «Sequenza», con i modelli per giorno e ora e le bozze, e «Post dei gruppi», con i post pubblicati di un gruppo. Anteprima del post come in app.
+4. Round di conferma per gruppo: creazione, modifica e annullamento prima dell'inizio, stato in sola consultazione.
+5. Cerchio: programmazione settimanale e moderazione dei cerchi aperti, aggiornata ogni 10 secondi.
 6. Utenti in attesa e richiedenti del prossimo percorso.
-7. Frasi dell'anno e del percorso, con import da CSV.
-8. Solo Super Admin: cicli con date e durata del percorso, ruoli, testi dei messaggi.
+7. Frasi dell'anno e del percorso, con import da CSV e pulsante «Scarica CSV».
+8. Solo Super Admin: cicli con date e durata del percorso modificabili fino all'inizio, ruoli, testi dei messaggi.
+9. Pubblicazione del pannello su Firebase Hosting, prima nel progetto di prova.
 
 ### Fase 4 — App mobile (settimane 1–7)
 - Accesso e registrazione con email e password, email verificata e informativa privacy.
 - Schermata "In attesa": frase del giorno, numero dei richiedenti, richiesta di partecipazione e suo annullamento.
-- Canale Principale del proprio gruppo, in sola lettura, con la frase del giorno del percorso.
+- Canale Principale del proprio gruppo, in sola lettura, con link cliccabili, senza autore e con la frase del giorno del percorso.
 - Ingresso al cerchio dal post di annuncio, con il numero di partecipanti.
 - Conferma di appartenenza.
 - Schermate per utenti sospesi e bannati.
@@ -96,7 +98,7 @@ Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile.
 - Invio in revisione agli store **entro venerdì 11 dicembre**.
 - Per la revisione Apple serve un **account di prova** con email e password, da indicare nella richiesta di revisione.
 - Schede degli store: descrizione, schermate, link all'informativa privacy, dichiarazione dei dati raccolti.
-- Messa in produzione di backend e pannello web.
+- Messa in produzione del backend su Railway e del pannello web su Firebase Hosting.
 - Pubblicazione il 26 dicembre, che è sabato e festivo. Gli store permettono di programmare la pubblicazione in anticipo.
 - Apertura del primo ciclo.
 
@@ -113,13 +115,10 @@ Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile.
 | Frasi non pronte o diritti non verificati | Notifica giornaliera vuota al lancio | Raccogliere le frasi da subito; senza frasi il job non invia nulla e il resto dell'app funziona |
 
 ## Cosa può slittare
-Se i tempi stringono, si rimandano in quest'ordine:
-
-1. Modifica dei testi per sospesi, bannati e ciclo chiuso. Restano testi fissi.
-2. Revoca del ban dal pannello. Si fa a mano su richiesta.
+Se i tempi stringono, si rimanda la modifica dei testi per sospesi, bannati e ciclo chiuso. Restano testi fissi.
 
 La cancellazione dell'account **non può slittare**, perché gli store la richiedono.
 
 ## Prossimi passi
-1. Il gruppo crea la mail di progetto, sceglie il referente, apre gli account store e sceglie l'hosting.
+1. Il gruppo crea la mail di progetto, sceglie il referente, apre gli account store e attiva l'abbonamento Hobby di Railway.
 2. Si parte con la fase 1: modello dati dei gruppi ed eliminazione di Socket.IO dall'app.
