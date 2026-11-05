@@ -140,7 +140,7 @@ model SharingChannelPost {
   createdAt        DateTime @default(now()) @map("created_at")
 
   sharingChannel SharingChannel @relation(fields: [sharingChannelId], references: [id], onDelete: Cascade)
-  author         User           @relation(fields: [authorId], references: [id])
+  author         User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@map("sharing_channel_posts")
 }

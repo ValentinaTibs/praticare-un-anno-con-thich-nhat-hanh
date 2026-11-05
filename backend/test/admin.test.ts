@@ -3,6 +3,9 @@ import {
   createTestApp,
   givenUser,
   givenAdmin,
+  givenGroup,
+  givenMember,
+  givenOpenSharingChannel,
   firebaseTokenFor,
   loginAs,
 } from './helpers.js';
@@ -124,6 +127,26 @@ describe('Gestione utenti da parte degli admin', () => {
     const login = await verifyFirebase(app, target.email);
     expect(login.statusCode).toBe(403);
     expect(login.json()).toMatchObject({ contact: 'admin@example.com' });
+  });
+
+  it('chi ha scritto nel cerchio aperto viene rimosso insieme ai suoi messaggi', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const group = await givenGroup();
+    await givenOpenSharingChannel(group);
+    const anna = await givenMember(group);
+    const marco = await loginAs(app, await givenMember(group));
+    const asAnna = await loginAs(app, anna);
+    for (const member of [asAnna, marco]) {
+      await app.inject({ method: 'POST', url: '/api/sharing-channel/join', headers: member });
+    }
+    await app.inject({ method: 'POST', url: '/api/sharing-channel/posts', headers: asAnna, payload: { content: 'Ciao' } });
+
+    const remove = await app.inject({ method: 'DELETE', url: `/api/admin/${anna.id}`, headers });
+    expect(remove.statusCode).toBe(204);
+
+    const posts = await app.inject({ method: 'GET', url: '/api/sharing-channel/posts', headers: marco });
+    expect(posts.json()).toEqual([]);
   });
 
   it('un admin non può sospendere, bannare o rimuovere il Super Admin, che continua ad accedere', async () => {

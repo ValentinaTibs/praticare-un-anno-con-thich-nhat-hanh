@@ -97,13 +97,13 @@ export async function adminRoutes(app: FastifyInstance) {
       return reply.status(409).send({ message: 'Un utente bannato non può essere rimosso' });
     }
 
-    // Orphan their scheduled posts — mark as draft so they won't auto-publish
-    await prisma.mainChannelPost.updateMany({
-      where: { authorId: target.id, publishedAt: null, isDraft: false },
-      data: { isDraft: true },
-    });
-
+    // All or nothing: their scheduled posts become drafts so they won't auto-publish,
+    // and their sharing channel messages go with the account (cascade).
     await prisma.$transaction([
+      prisma.mainChannelPost.updateMany({
+        where: { authorId: target.id, publishedAt: null, isDraft: false },
+        data: { isDraft: true },
+      }),
       prisma.bannedEmail.upsert({
         where: { email: target.email },
         update: { permanent: false },
