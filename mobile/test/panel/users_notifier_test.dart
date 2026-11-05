@@ -168,10 +168,20 @@ void main() {
       expect(actionsFor(admin, admin), isEmpty);
       expect(restrictionFor(admin, admin), 'Questo è il tuo account.');
       expect(actionsFor(admin, user('a2', role: 'admin')), isEmpty);
-      expect(restrictionFor(admin, user('a2', role: 'admin')), 'Solo il Super Admin può intervenire su un admin.');
+      expect(restrictionFor(admin, user('a2', role: 'admin')), 'Solo il Super Admin può sospendere, bannare o rimuovere un admin.');
       expect(actionsFor(admin, superAdmin), isEmpty);
       expect(restrictionFor(admin, superAdmin), isNotNull);
       expect(actionsFor(admin, user('a2', role: 'admin', reviewed: false)), [UserAction.review]);
+    });
+
+    test('qualunque admin riattiva chiunque sia sospeso, anche un admin o il Super Admin', () {
+      expect(actionsFor(admin, user('a2', role: 'admin', status: 'suspended')), [UserAction.reactivate]);
+      expect(actionsFor(admin, user('s2', role: 'super_admin', status: 'suspended')), [UserAction.reactivate]);
+    });
+
+    test('nessuno revisiona il proprio account', () {
+      final waitingAdmin = user('a1', role: 'admin', reviewed: false);
+      expect(actionsFor(waitingAdmin, waitingAdmin), isEmpty);
     });
 
     test('il Super Admin agisce sugli admin ma non su sé stesso', () {

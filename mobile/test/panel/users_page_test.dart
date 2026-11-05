@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:community_app/core/api/api_client.dart';
 import 'package:community_app/core/locale.dart';
 import 'package:community_app/panel/auth/panel_auth_notifier.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'fakes.dart';
@@ -219,8 +222,15 @@ void main() {
     testWidgets('un admin non ha azioni su un altro admin', (tester) async {
       await pumpWithUser(tester, listedUserJson('a2', role: 'admin'));
 
-      expect(inCard('Solo il Super Admin può intervenire su un admin.'), findsOneWidget);
+      expect(inCard('Solo il Super Admin può sospendere, bannare o rimuovere un admin.'), findsOneWidget);
       expect(inCard('Sospendi'), findsNothing);
+    });
+
+    testWidgets('un admin riattiva un altro admin sospeso', (tester) async {
+      await pumpWithUser(tester, listedUserJson('a2', role: 'admin', status: 'suspended'));
+
+      expect(inCard('Riattiva'), findsOneWidget);
+      expect(inCard('Banna'), findsNothing);
     });
 
     testWidgets('nessuno ha azioni sul Super Admin', (tester) async {
@@ -242,7 +252,7 @@ void main() {
       expect(backendOf(container).calls.length, before);
     });
 
-    testWidgets('sospendere chiede conferma, chiama il backend e chiude la scheda', (tester) async {
+    testWidgets('sospendere chiede conferma, chiama il backend e aggiorna la scheda', (tester) async {
       final container = await pumpWithUser(tester, listedUserJson('u1'));
 
       await tester.tap(inCard('Sospendi'));
@@ -253,8 +263,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(backendOf(container).calls, containsAllInOrder(['PATCH /api/admin/u1/suspend', 'GET /api/users?page=1&limit=50']));
-      expect(find.byType(AlertDialog), findsNothing);
       expect(find.text('Utente sospeso'), findsOneWidget);
+      expect(inCard('Sospeso'), findsOneWidget, reason: 'la scheda resta aperta con il nuovo stato');
+      expect(inCard('Riattiva'), findsOneWidget);
+      expect(inCard('Sospendi'), findsNothing);
     });
 
     testWidgets('«Annulla» sulla rimozione non chiama il backend', (tester) async {
@@ -282,6 +294,7 @@ void main() {
 
       expect(backendOf(container).calls, contains('DELETE /api/admin/u1'));
       expect(find.text('Utente rimosso'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
     });
 
     testWidgets('un rifiuto del backend mostra il suo messaggio nella scheda', (tester) async {
@@ -295,6 +308,61 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(inCard('Solo un utente attivo può essere sospeso'), findsOneWidget);
+    });
+
+    testWidgets('dopo un rifiuto la scheda mostra lo stato attuale dell\'utente', (tester) async {
+      final container = await pumpWithUser(tester, listedUserJson('u1'));
+      // Another admin suspended the user in the meantime.
+      backendOf(container).responses
+        ..['/api/admin/u1/suspend'] = ApiException(statusCode: 409, message: 'Solo un utente attivo può essere sospeso')
+        ..['/api/users'] = usersPageJson([listedUserJson('u1', status: 'suspended')]);
+
+      await tester.tap(inCard('Sospendi'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.byType(FilledButton), matching: find.text('Sospendi')));
+      await tester.pumpAndSettle();
+
+      expect(inCard('Sospeso'), findsOneWidget);
+      expect(inCard('Riattiva'), findsOneWidget);
+      expect(inCard('Sospendi'), findsNothing);
+    });
+
+    testWidgets('se l\'utente non esiste più la scheda non offre azioni', (tester) async {
+      final container = await pumpWithUser(tester, listedUserJson('u1'));
+      backendOf(container).responses
+        ..['/api/admin/u1/suspend'] = ApiException(statusCode: 404, message: 'Elemento non trovato')
+        ..['/api/users'] = usersPageJson([]);
+
+      await tester.tap(inCard('Sospendi'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.byType(FilledButton), matching: find.text('Sospendi')));
+      await tester.pumpAndSettle();
+
+      expect(inCard('Elemento non trovato'), findsOneWidget);
+      for (final label in ['Sospendi', 'Banna', 'Rimuovi']) {
+        expect(inCard(label), findsNothing, reason: label);
+      }
+      expect(inCard('Chiudi'), findsOneWidget);
+    });
+
+    testWidgets('un errore arrivato dopo la chiusura della scheda compare in un avviso', (tester) async {
+      final container = await pumpWithUser(tester, listedUserJson('u1'));
+      final answer = Completer<Object?>();
+      Object? pending(String method, Map<String, dynamic>? query) => answer.future;
+      backendOf(container).responses['/api/admin/u1/suspend'] = pending;
+
+      await tester.tap(inCard('Sospendi'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.byType(FilledButton), matching: find.text('Sospendi')));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+
+      answer.completeError(ApiException(statusCode: 409, message: 'Solo un utente attivo può essere sospeso'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Solo un utente attivo può essere sospeso'), findsOneWidget);
     });
   });
 }

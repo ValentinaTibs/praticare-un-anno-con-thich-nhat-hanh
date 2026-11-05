@@ -17,9 +17,10 @@ const _statusFilters = <String?, String>{
 };
 
 /// The user's group, named by its start date, or "In attesa". [short] leaves
-/// out "Gruppo iniziato il", for the table's "Gruppo" column.
+/// out "Gruppo iniziato il", for the table's "Gruppo" column. Only for users from
+/// /api/users, which always sends groupId: null there means waiting.
 String groupLabelFor(User user, Map<String, PanelGroup> groupsById, {bool short = false}) {
-  if (user.isWaiting) return 'In attesa';
+  if (user.groupId == null) return 'In attesa';
   final group = groupsById[user.groupId];
   if (group == null) return '—';
   final label = short ? formatDate(group.startedAt) : group.label;

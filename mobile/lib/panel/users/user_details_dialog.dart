@@ -8,8 +8,9 @@ import 'user_actions.dart';
 import 'users_notifier.dart';
 
 /// A user's card: details, motivation and the actions the viewer may take.
-/// A successful action closes the card and is confirmed on the page; a failed
-/// one shows the backend's message in the card.
+/// Each action is confirmed with a SnackBar; the card then shows the user's new
+/// state, except after a removal, which closes it. A failed action shows the
+/// backend's message in the card, or in a SnackBar if the card was closed meanwhile.
 class UserDetailsDialog extends ConsumerStatefulWidget {
   final User user;
   final String groupLabel;
@@ -21,10 +22,13 @@ class UserDetailsDialog extends ConsumerStatefulWidget {
 }
 
 class _UserDetailsDialogState extends ConsumerState<UserDetailsDialog> {
+  late User _user = widget.user;
   bool _busy = false;
   String? _error;
 
-  User get _user => widget.user;
+  /// The user no longer exists, e.g. another admin removed them: no actions left.
+  bool _gone = false;
+
   String get _name => '${_user.name} ${_user.surname}';
 
   Future<void> _run(UserAction action) async {
@@ -40,16 +44,45 @@ class _UserDetailsDialogState extends ConsumerState<UserDetailsDialog> {
     });
     try {
       await ref.read(usersProvider.notifier).act(action, _user);
-      // The card may have been dismissed meanwhile: then there is nothing to close.
-      if (mounted) navigator.pop();
       messenger.showSnackBar(SnackBar(content: Text(action.done)));
-    } catch (e) {
+      // The card may have been dismissed meanwhile: then there is nothing to update.
       if (!mounted) return;
+      if (action == UserAction.remove) {
+        navigator.pop();
+      } else {
+        setState(() {
+          _busy = false;
+          _user = action.applyTo(_user);
+        });
+      }
+    } catch (e) {
+      final message = e is ApiException ? e.message : 'Si è verificato un errore. Riprova.';
+      if (!mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+        return;
+      }
       setState(() {
         _busy = false;
-        _error = e is ApiException ? e.message : 'Si è verificato un errore. Riprova.';
+        _error = message;
+        // The action failed because the user changed meanwhile (e.g. another admin
+        // suspended them): the reloaded list says how they are now.
+        if (e is ApiException && e.statusCode == 404) {
+          _gone = true;
+        } else {
+          _user = _reloaded() ?? _user;
+        }
       });
     }
+  }
+
+  /// [_user] as the users list shows them after its reload, if it is there.
+  User? _reloaded() {
+    final state = ref.read(usersProvider);
+    if (state.loading) return null;
+    for (final user in state.users) {
+      if (user.id == _user.id) return user;
+    }
+    return null;
   }
 
   Future<bool> _confirm(UserAction action, String question) async {
@@ -80,8 +113,8 @@ class _UserDetailsDialogState extends ConsumerState<UserDetailsDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final viewer = ref.watch(panelAuthProvider).user;
-    final actions = viewer == null ? const <UserAction>[] : actionsFor(viewer, _user);
-    final restriction = viewer == null ? null : restrictionFor(viewer, _user);
+    final actions = viewer == null || _gone ? const <UserAction>[] : actionsFor(viewer, _user);
+    final restriction = viewer == null || _gone ? null : restrictionFor(viewer, _user);
     final lastConfirmed = _user.lastConfirmedAt;
     final createdAt = _user.createdAt;
     final motivation = _user.motivation?.trim() ?? '';

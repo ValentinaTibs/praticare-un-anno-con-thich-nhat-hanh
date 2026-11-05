@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { prisma } from '../src/config/prisma.js';
 import {
   createTestApp,
   givenUser,
@@ -11,13 +12,39 @@ import {
 } from './helpers.js';
 
 // The actions an admin takes on someone else's account, all subject to the role check.
+// Reactivation is not among them: any admin reactivates anyone (see its own test).
 function actionsOn(id: string) {
   return [
     ['PATCH', `/api/admin/${id}/suspend`],
-    ['PATCH', `/api/admin/${id}/reactivate`],
     ['PATCH', `/api/admin/${id}/ban`],
     ['DELETE', `/api/admin/${id}`],
   ] as const;
+}
+
+// Runs once right after the next user lookup by a route (findTarget), as if another
+// admin acted in that instant: the write that follows must not overwrite that change.
+let afterNextLookup: (() => Promise<unknown>) | null = null;
+prisma.$use(async (params, next) => {
+  const result = await next(params);
+  if (afterNextLookup && params.model === 'User' && params.action === 'findUniqueOrThrow') {
+    const hook = afterNextLookup;
+    afterNextLookup = null;
+    await hook();
+  }
+  return result;
+});
+
+// Bans [user] the way PATCH /ban does.
+function banInTheMeantime(user: { id: string; email: string }) {
+  afterNextLookup = () =>
+    prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { status: 'banned' } }),
+      prisma.bannedEmail.upsert({
+        where: { email: user.email },
+        update: { permanent: true },
+        create: { email: user.email, permanent: true },
+      }),
+    ]);
 }
 
 function verifyFirebase(app: Awaited<ReturnType<typeof createTestApp>>, email: string) {
@@ -191,12 +218,76 @@ describe('Gestione utenti da parte degli admin', () => {
     expect(allowed.json()).toMatchObject({ status: 'suspended' });
   });
 
+  it('qualunque admin riattiva un admin o il Super Admin sospeso', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+
+    for (const role of ['admin', 'super_admin'] as const) {
+      const target = await givenAdmin({ role, status: 'suspended' });
+      const res = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/reactivate`, headers });
+      expect(res.statusCode, role).toBe(200);
+      expect(res.json()).toMatchObject({ status: 'active' });
+      expect((await verifyFirebase(app, target.email)).statusCode, role).toBe(200);
+    }
+  });
+
+  it('nessuno può revisionare il proprio account', async () => {
+    const app = await createTestApp();
+    const self = await givenAdmin({ reviewedByAdmin: false });
+    const headers = await loginAs(app, self);
+
+    const res = await app.inject({ method: 'PATCH', url: `/api/admin/${self.id}/review`, headers });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().message).toBe('Non puoi revisionare il tuo account');
+
+    const pending = await app.inject({ method: 'GET', url: '/api/users?reviewed=false', headers });
+    expect(pending.json().users.map((u: { id: string }) => u.id)).toContain(self.id);
+  });
+
+  it('un ban arrivato durante la rimozione non viene annullato', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser();
+
+    banInTheMeantime(target);
+    const remove = await app.inject({ method: 'DELETE', url: `/api/admin/${target.id}`, headers });
+    expect(remove.statusCode).toBe(409);
+    expect(remove.json().message).toBe('Un utente bannato non può essere rimosso');
+
+    expect(await prisma.user.findUnique({ where: { id: target.id } })).toMatchObject({ status: 'banned' });
+    expect(await prisma.bannedEmail.findUnique({ where: { email: target.email } })).toMatchObject({ permanent: true });
+  });
+
+  it('un ban arrivato durante una sospensione o una riattivazione non viene annullato', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const target = await givenUser();
+    banInTheMeantime(target);
+    const suspend = await app.inject({ method: 'PATCH', url: `/api/admin/${target.id}/suspend`, headers });
+    expect(suspend.statusCode).toBe(409);
+    expect(suspend.json().message).toBe('Solo un utente attivo può essere sospeso');
+
+    const other = await givenUser({ status: 'suspended' });
+    banInTheMeantime(other);
+    const reactivate = await app.inject({ method: 'PATCH', url: `/api/admin/${other.id}/reactivate`, headers });
+    expect(reactivate.statusCode).toBe(409);
+    expect(reactivate.json().message).toBe('Solo un utente sospeso può essere riattivato');
+
+    for (const user of [target, other]) {
+      expect(await prisma.user.findUnique({ where: { id: user.id } })).toMatchObject({ status: 'banned' });
+    }
+  });
+
   it('le azioni su un utente che non esiste rispondono 404', async () => {
     const app = await createTestApp();
     const headers = await loginAs(app, await givenAdmin());
     const missing = '00000000-0000-0000-0000-000000000000';
 
-    for (const [method, url] of [...actionsOn(missing), ['PATCH', `/api/admin/${missing}/review`] as const]) {
+    for (const [method, url] of [
+      ...actionsOn(missing),
+      ['PATCH', `/api/admin/${missing}/reactivate`] as const,
+      ['PATCH', `/api/admin/${missing}/review`] as const,
+    ]) {
       const res = await app.inject({ method, url, headers });
       expect(res.statusCode, `${method} ${url}`).toBe(404);
       expect(res.json().message).toBe('Elemento non trovato');

@@ -29,6 +29,16 @@ enum UserAction {
         _ => null,
       };
 
+  /// [user] as the backend leaves them once the action succeeded.
+  User applyTo(User user) => switch (this) {
+        UserAction.review => user.copyWith(reviewedByAdmin: true),
+        // The backend counts reactivating as a confirmation.
+        UserAction.reactivate || UserAction.unban => user.copyWith(status: 'active', lastConfirmedAt: DateTime.now()),
+        UserAction.suspend => user.copyWith(status: 'suspended'),
+        UserAction.ban => user.copyWith(status: 'banned'),
+        UserAction.remove => user,
+      };
+
   /// What follows from the action, shown under [question].
   String get consequence => switch (this) {
         UserAction.suspend => 'Non potrà usare l\'app finché un admin non lo riattiva.',
@@ -50,8 +60,8 @@ int _rank(String role) => switch (role) {
       _ => 0,
     };
 
-/// The backend lets an admin act only on users of lower rank: an admin on plain
-/// users, the Super Admin also on admins. Never on oneself or on the Super Admin.
+/// The backend lets an admin suspend, ban or remove only users of lower rank: an
+/// admin plain users, the Super Admin also admins. Never oneself or the Super Admin.
 bool _outranks(User viewer, User target) => _rank(viewer.role) > _rank(target.role);
 
 /// The actions [viewer] may take on [target] in its current state.
@@ -60,7 +70,9 @@ List<UserAction> actionsFor(User viewer, User target) {
   return [
     // Reviewing is harmless and final: any admin reviews anyone but themselves.
     if (!target.reviewedByAdmin && viewer.id != target.id) UserAction.review,
-    if (canAct && target.isSuspended) UserAction.reactivate,
+    // Any admin reactivates anyone, admins and the Super Admin included: whoever is
+    // suspended can't do it themselves.
+    if (target.isSuspended && viewer.id != target.id) UserAction.reactivate,
     if (canAct && target.isActive) UserAction.suspend,
     if (canAct && !target.isBanned) UserAction.ban,
     if (canAct && target.isBanned && viewer.isSuperAdmin) UserAction.unban,
@@ -72,6 +84,6 @@ List<UserAction> actionsFor(User viewer, User target) {
 String? restrictionFor(User viewer, User target) {
   if (viewer.id == target.id) return 'Questo è il tuo account.';
   if (target.isSuperAdmin) return 'Nessuno può sospendere, bannare o rimuovere il Super Admin.';
-  if (!_outranks(viewer, target)) return 'Solo il Super Admin può intervenire su un admin.';
+  if (!_outranks(viewer, target)) return 'Solo il Super Admin può sospendere, bannare o rimuovere un admin.';
   return null;
 }

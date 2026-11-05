@@ -10,7 +10,8 @@ class User {
   final DateTime? lastConfirmedAt;
   final DateTime? createdAt;
 
-  /// The user's group; null while waiting for the next path.
+  /// The user's group. Only the admin list (/api/users) and /api/users/me say it:
+  /// elsewhere it is null even for a group member.
   final String? groupId;
 
   const User({
@@ -27,7 +28,19 @@ class User {
     this.groupId,
   });
 
-  bool get isWaiting => groupId == null;
+  User copyWith({String? status, bool? reviewedByAdmin, DateTime? lastConfirmedAt}) => User(
+        id: id,
+        name: name,
+        surname: surname,
+        email: email,
+        role: role,
+        status: status ?? this.status,
+        reviewedByAdmin: reviewedByAdmin ?? this.reviewedByAdmin,
+        motivation: motivation,
+        lastConfirmedAt: lastConfirmedAt ?? this.lastConfirmedAt,
+        createdAt: createdAt,
+        groupId: groupId,
+      );
 
   bool get isAdmin => role == 'admin' || role == 'super_admin';
   bool get isSuperAdmin => role == 'super_admin';
