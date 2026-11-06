@@ -58,6 +58,7 @@ model User {
   confirmationRequests  ConfirmationRequest[]
   openedSharingChannels SharingChannel[]
   openedCycles          RegistrationCycle[]
+  participationRequests ParticipationRequest[]
 
   @@map("users")
 }
@@ -168,10 +169,38 @@ model RegistrationCycle {
   startsAt          DateTime    @map("starts_at")
   durationDays      Int         @default(365) @map("duration_days")
 
-  opener User?  @relation(fields: [openedBy], references: [id])
-  group  Group?
+  opener                User?                  @relation(fields: [openedBy], references: [id])
+  group                 Group?
+  participationRequests ParticipationRequest[]
+  removedRequesters     RemovedRequester[]
 
   @@map("registration_cycles")
+}
+
+model ParticipationRequest {
+  id        String   @id @default(uuid())
+  cycleId   String   @map("cycle_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cycle RegistrationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, userId])
+  @@index([userId])
+  @@map("participation_requests")
+}
+
+// Who was removed by an admin with a request in progress. Keyed by email, not by
+// user: they may register again, as a new user, but not ask again in this cycle.
+model RemovedRequester {
+  cycleId String @map("cycle_id")
+  email   String
+
+  cycle RegistrationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@id([cycleId, email])
+  @@map("removed_requesters")
 }
 
 // The users registered in the same registration cycle. Each group has its own

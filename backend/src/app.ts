@@ -13,6 +13,7 @@ import { sharingChannelRoutes } from './routes/sharing-channel.js';
 import { confirmationRoutes } from './routes/confirmations.js';
 import { adminRoutes } from './routes/admin.js';
 import { cycleRoutes } from './routes/cycles.js';
+import { participationRequestRoutes } from './routes/participation-requests.js';
 import { groupRoutes } from './routes/groups.js';
 
 export async function buildApp() {
@@ -62,6 +63,7 @@ export async function buildApp() {
   await app.register(confirmationRoutes, { prefix: '/api/confirmations' });
   await app.register(adminRoutes, { prefix: '/api/admin' });
   await app.register(cycleRoutes, { prefix: '/api/cycles' });
+  await app.register(participationRequestRoutes, { prefix: '/api/cycles' });
   await app.register(groupRoutes, { prefix: '/api/groups' });
 
   return app;

@@ -89,6 +89,8 @@ export async function adminRoutes(app: FastifyInstance) {
         update: {},
         create: { email: target.email },
       }),
+      // Banned means out for good: the request can't stay in the admins' list.
+      prisma.participationRequest.deleteMany({ where: { userId: target.id } }),
     ]);
 
     return reply.send({ id: target.id, status: 'banned' });
@@ -122,6 +124,12 @@ export async function adminRoutes(app: FastifyInstance) {
     const conflict = 'Un utente bannato non può essere rimosso';
     if (target.status === UserStatus.banned) return reply.status(409).send({ message: conflict });
 
+    // They may register again at once, but not ask again in a cycle they were removed from.
+    const pendingRequests = await prisma.participationRequest.findMany({
+      where: { userId: target.id, cycle: { startsAt: { gt: new Date() } } },
+      select: { cycleId: true },
+    });
+
     // All or nothing: their scheduled posts become drafts so they won't auto-publish,
     // and their sharing channel messages go with the account (cascade). If a ban arrived
     // meanwhile, the delete matches nothing and the ban stays.
@@ -130,6 +138,10 @@ export async function adminRoutes(app: FastifyInstance) {
         prisma.mainChannelPost.updateMany({
           where: { authorId: target.id, publishedAt: null, isDraft: false },
           data: { isDraft: true },
+        }),
+        prisma.removedRequester.createMany({
+          data: pendingRequests.map(({ cycleId }) => ({ cycleId, email: target.email })),
+          skipDuplicates: true,
         }),
         prisma.user.delete({ where: { id: target.id, status: { not: UserStatus.banned } } }),
       ]),

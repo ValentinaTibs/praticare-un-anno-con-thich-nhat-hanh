@@ -84,7 +84,8 @@
 - Chi viene **rimosso** da un admin mentre ha una richiesta in corso **non può chiedere di nuovo** di partecipare nello stesso ciclo, anche se si registra di nuovo con la stessa email. Potrà farlo dal ciclo successivo.
 - L'utente può **annullare** la richiesta fino alla data di inizio, e rifarla finché il ciclo è aperto.
 - Gli utenti in attesa vedono in app **quante persone** hanno chiesto di partecipare al prossimo percorso. Il numero si aggiorna, ma non parte una notifica a ogni nuova richiesta.
-- Si partecipa a **un percorso alla volta**: chi è in un gruppo attivo non può chiedere di partecipare al successivo.
+- Si partecipa a **un percorso alla volta**: chi è in un gruppo attivo non può chiedere di partecipare al successivo. Chi ha già una richiesta in corso per un percorso non ancora iniziato deve annullarla prima di chiedere di partecipare a un altro.
+- Il **ban** cancella la richiesta in corso. Chi è **sospeso** la conserva, ma non viene contato tra i richiedenti.
 
 ### Gruppi
 - Un **gruppo** è l'insieme delle persone che hanno chiesto di partecipare nello **stesso ciclo**.
@@ -374,7 +375,7 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
 - **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
 - **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. Alla registrazione l'utente non entra più in un gruppo, ma il gruppo non nasce ancora alla data di inizio: per ora nessun nuovo utente entra in un gruppo (#92).
-- **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
+- **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. Il backend gestisce richieste di partecipazione, annullamento, conteggio ed elenco dei richiedenti. Mancano la schermata "In attesa" nell'app (#84) e l'elenco dei richiedenti nel pannello (#33).
 - **Revisione come approvazione:** il codice ha il campo `reviewedByAdmin`, ma non lo usa per decidere chi entra nel gruppo.
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa. Per questo il pannello non mostra ancora gruppi archiviati.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import e l'export in CSV, il job delle 07:00 né l'interruttore nel profilo.
