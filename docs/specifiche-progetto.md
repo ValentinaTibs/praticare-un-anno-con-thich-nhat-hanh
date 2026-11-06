@@ -351,7 +351,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti per ogni gruppo data di inizio e durata, con scadenza alle 23:59 dell'ultimo giorno, e che possa modificare o annullare il round finché non è iniziato.
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
 - **Già allineato:** i round di conferma escludono già admin e Super Admin.
-- **Nascita del gruppo:** il codice gestisce date e durata del ciclo e la loro modifica fino all'inizio, e il gruppo non nasce più all'apertura. Manca ancora la nascita del gruppo alla data di inizio (#92): finché non c'è, un nuovo ciclo non crea nessun gruppo.
 - **Programmazione ricorrente del cerchio:** il codice prevede solo l'apertura manuale da parte di un admin. Le specifiche chiedono un appuntamento settimanale con giorno, ora di inizio e durata, uguale per tutti i gruppi.
 - **Moderazione del cerchio:** il backend permette a un admin di scegliere il gruppo con `?groupId=` e di vederne i membri, ma per leggere i messaggi deve entrare nel cerchio. Non c'è un elenco dei cerchi aperti di tutti i gruppi. Per il pannello servono questo elenco e, per ogni cerchio, i messaggi senza entrarci.
 - **Avviso di chiusura del cerchio:** il codice lo manda a tutti i membri del gruppo. Le specifiche lo mandano solo a chi è nel cerchio.
@@ -374,9 +373,8 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
 - **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
-- **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. Alla registrazione l'utente non entra più in un gruppo, ma il gruppo non nasce ancora alla data di inizio: per ora nessun nuovo utente entra in un gruppo (#92).
+- **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti.
 - **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. App e pannello gestiscono richieste di partecipazione, annullamento, conteggio ed elenco dei richiedenti. Nella schermata "In attesa" manca la frase del giorno (#83), e a ciclo chiuso il messaggio è ancora un testo fisso (#34).
-- **Revisione come approvazione:** il codice ha il campo `reviewedByAdmin`, ma non lo usa per decidere chi entra nel gruppo.
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa. Per questo il pannello non mostra ancora gruppi archiviati.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import e l'export in CSV, il job delle 07:00 né l'interruttore nel profilo.
 - **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.
