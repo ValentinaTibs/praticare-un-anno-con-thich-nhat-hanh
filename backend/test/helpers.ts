@@ -51,18 +51,20 @@ export async function loginAs(app: Awaited<ReturnType<typeof createTestApp>>, us
   return { authorization: `Bearer ${res.json().accessToken}` };
 }
 
-export async function givenOpenCycle(scheduledClosedAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
-  const openedAt = new Date();
+export async function givenOpenCycle(
+  scheduledClosedAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  startsAt = new Date(Math.max(scheduledClosedAt.getTime(), Date.now()) + 7 * 24 * 60 * 60 * 1000),
+) {
   return prisma.registrationCycle.create({
-    data: { status: 'open', openedAt, scheduledClosedAt, group: { create: { startedAt: openedAt } } },
-    include: { group: true },
+    data: { status: 'open', openedAt: new Date(), scheduledClosedAt, startsAt },
   });
 }
 
-// A group from a cycle that has already closed.
+// A group from a cycle whose journey has already started.
 export async function givenGroup() {
+  const now = new Date();
   const cycle = await prisma.registrationCycle.create({
-    data: { status: 'closed', openedAt: new Date(), closedAt: new Date(), group: { create: { startedAt: new Date() } } },
+    data: { status: 'closed', openedAt: now, closedAt: now, startsAt: now, group: { create: { startedAt: now } } },
     include: { group: true },
   });
   return cycle.group!;
