@@ -91,6 +91,13 @@ class _CycleCard extends ConsumerWidget {
     return scheduled == null ? 'Nessuna data di chiusura' : 'Richieste aperte fino al ${formatDateTime(scheduled)}';
   }
 
+  String get _people {
+    if (cycle.hasStarted) {
+      return cycle.participants == 1 ? '1 partecipante' : '${cycle.participants} partecipanti';
+    }
+    return cycle.requesters == 1 ? '1 richiedente' : '${cycle.requesters} richiedenti';
+  }
+
   Future<void> _closeEarly(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -130,6 +137,7 @@ class _CycleCard extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(_status, style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary)),
             const SizedBox(height: 8),
+            Text(_people, style: theme.textTheme.titleSmall),
             Text('Durata: ${cycle.durationDays == 1 ? '1 giorno' : '${cycle.durationDays} giorni'}'),
             Text(_closing),
             if (!cycle.hasStarted)

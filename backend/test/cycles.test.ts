@@ -7,6 +7,7 @@ import {
   givenUser,
   givenAdmin,
   givenGroup,
+  givenMember,
   givenOpenCycle,
   loginAs,
 } from './helpers.js';
@@ -351,5 +352,24 @@ describe('Cicli', () => {
     const res = await app.inject({ method: 'GET', url: '/api/cycles', headers });
 
     expect(res.json()).toMatchObject([{ id, status: 'closed' }]);
+  });
+
+  it('l\'elenco conta i richiedenti attivi e i membri del gruppo di ogni ciclo', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    const upcoming = await givenOpenCycle();
+    for (const status of ['active', 'active', 'suspended'] as const) {
+      const user = await givenUser({ status });
+      await prisma.participationRequest.create({ data: { cycleId: upcoming.id, userId: user.id } });
+    }
+    const group = await givenGroup();
+    await givenMember(group);
+
+    const res = await app.inject({ method: 'GET', url: '/api/cycles', headers });
+
+    expect(res.json()).toMatchObject([
+      { id: upcoming.id, requesters: 2, participants: 0 },
+      { id: group.cycleId, requesters: 0, participants: 1 },
+    ]);
   });
 });

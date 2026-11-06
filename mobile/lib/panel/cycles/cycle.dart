@@ -11,6 +11,12 @@ class PanelCycle {
   final DateTime startsAt;
   final int durationDays;
 
+  /// Who asked to join and is active; what counts until the journey starts.
+  final int requesters;
+
+  /// Members of the group; what counts once the journey has started.
+  final int participants;
+
   /// Cycles migrated from before closing dates were required may have none.
   final DateTime? scheduledClosedAt;
   final DateTime? closedAt;
@@ -20,6 +26,8 @@ class PanelCycle {
     required this.isOpen,
     required this.startsAt,
     required this.durationDays,
+    this.requesters = 0,
+    this.participants = 0,
     this.scheduledClosedAt,
     this.closedAt,
   });
@@ -32,6 +40,8 @@ class PanelCycle {
         isOpen: json['status'] == 'open',
         startsAt: DateTime.parse(json['startsAt'] as String),
         durationDays: json['durationDays'] as int,
+        requesters: json['requesters'] as int? ?? 0,
+        participants: json['participants'] as int? ?? 0,
         scheduledClosedAt: _date(json['scheduledClosedAt']),
         closedAt: _date(json['closedAt']),
       );

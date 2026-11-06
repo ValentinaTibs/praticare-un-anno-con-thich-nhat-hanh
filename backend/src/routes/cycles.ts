@@ -52,10 +52,24 @@ export async function cycleRoutes(app: FastifyInstance) {
     });
   });
 
-  // GET /api/cycles — super_admin only, every cycle, including closed ones still editable
+  // GET /api/cycles — super_admin only, every cycle, including closed ones still editable, with
+  // its requesters (counted as on the waiting screen: suspended users don't count) and group members
   app.get('/', { preHandler }, async (_request, reply) => {
     await closeExpiredCycles();
-    return reply.send(await prisma.registrationCycle.findMany({ orderBy: { startsAt: 'desc' } }));
+    const cycles = await prisma.registrationCycle.findMany({
+      orderBy: { startsAt: 'desc' },
+      include: {
+        group: { select: { _count: { select: { members: true } } } },
+        _count: { select: { participationRequests: { where: { user: { status: 'active' } } } } },
+      },
+    });
+    return reply.send(
+      cycles.map(({ group, _count, ...cycle }) => ({
+        ...cycle,
+        requesters: _count.participationRequests,
+        participants: group?._count.members ?? 0,
+      })),
+    );
   });
 
   // POST /api/cycles/open — super_admin only. The group is not created here.

@@ -13,6 +13,8 @@ Map<String, dynamic> cycleJson({
   String? closes = '2099-01-05T18:30:00.000',
   String? closedAt,
   int durationDays = 365,
+  int requesters = 0,
+  int participants = 0,
 }) =>
     {
       'id': id,
@@ -21,6 +23,8 @@ Map<String, dynamic> cycleJson({
       'durationDays': durationDays,
       'scheduledClosedAt': closes,
       'closedAt': closedAt,
+      'requesters': requesters,
+      'participants': participants,
     };
 
 Future<FakeApiClient> openCyclesPage(WidgetTester tester, List<Map<String, dynamic>> cycles, {Object? onWrite}) async {
@@ -89,6 +93,22 @@ void main() {
     expect(find.text('Può esserci un solo ciclo aperto alla volta.'), findsOneWidget);
     expect(find.text('Percorso dal 12 gennaio 2099'), findsOneWidget);
     expect(find.text('Richieste aperte fino al 5 gennaio 2099, 18:30'), findsOneWidget);
+  });
+
+  testWidgets('prima dell\'inizio mostra i richiedenti', (tester) async {
+    await openCyclesPage(tester, [cycleJson(requesters: 3, participants: 0)]);
+    expect(find.text('3 richiedenti'), findsOneWidget);
+    expect(find.textContaining('partecipant'), findsNothing);
+  });
+
+  testWidgets('dopo l\'inizio mostra i partecipanti, anche al singolare', (tester) async {
+    await openCyclesPage(tester, [
+      cycleJson(status: 'closed', startsAt: '2020-01-12T00:00:00.000', requesters: 5, participants: 34),
+      cycleJson(id: 'c2', status: 'closed', startsAt: '2019-01-12T00:00:00.000', participants: 1),
+    ]);
+    expect(find.text('34 partecipanti'), findsOneWidget);
+    expect(find.text('1 partecipante'), findsOneWidget);
+    expect(find.textContaining('richiedent'), findsNothing);
   });
 
   testWidgets('la modifica invia solo ciò che è cambiato', (tester) async {
