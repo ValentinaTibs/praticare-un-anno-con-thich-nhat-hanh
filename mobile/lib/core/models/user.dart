@@ -49,7 +49,7 @@ class User {
   bool get isBanned => status == 'banned';
 
   String get roleLabel => switch (role) {
-        'super_admin' => 'Super admin',
+        'super_admin' => 'Super Admin',
         'admin' => 'Admin',
         'user' => 'Utente',
         _ => role,

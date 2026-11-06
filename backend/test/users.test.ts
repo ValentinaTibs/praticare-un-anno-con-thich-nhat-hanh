@@ -23,6 +23,51 @@ describe('Elenco utenti per gli admin', () => {
     expect(ids(res)).not.toContain(reviewed.id);
   });
 
+  it('il filtro «da revisionare» esclude i bannati, a meno di chiederli', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin());
+    const active = await givenUser({ reviewedByAdmin: false });
+    const suspended = await givenUser({ reviewedByAdmin: false, status: 'suspended' });
+    const banned = await givenUser({ reviewedByAdmin: false, status: 'banned' });
+
+    const queue = await listUsers(app, headers, 'reviewed=false');
+    expect(ids(queue)).toEqual(expect.arrayContaining([active.id, suspended.id]));
+    expect(ids(queue)).not.toContain(banned.id);
+
+    const bannedOnly = await listUsers(app, headers, 'reviewed=false&status=banned');
+    expect(ids(bannedOnly)).toEqual([banned.id]);
+  });
+
+  it('la ricerca trova per nome e cognome insieme, in qualsiasi ordine', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin({ name: 'Admin', surname: 'Prova' }));
+    const chiara = await givenUser({ name: 'Chiara', surname: "D'Amico" });
+    await givenUser({ name: 'Chiara', surname: 'Neri' });
+    await givenUser({ name: 'Luca', surname: "D'Amico" });
+
+    for (const q of ["Chiara D'Amico", "d'amico  chiara"]) {
+      const res = await listUsers(app, headers, `q=${encodeURIComponent(q)}`);
+      expect(ids(res)).toEqual([chiara.id]);
+    }
+  });
+
+  it('le pagine non ripetono né saltano utenti con la stessa data di registrazione', async () => {
+    const app = await createTestApp();
+    const headers = await loginAs(app, await givenAdmin({ createdAt: new Date('2020-01-01') }));
+    const sameDate = new Date('2027-01-10T10:00:00.000Z');
+    const users = [];
+    for (let i = 0; i < 6; i++) users.push(await givenUser({ createdAt: sameDate }));
+    const newest = await givenUser({ createdAt: new Date('2027-02-01') });
+
+    const pages = [];
+    for (const page of [1, 2, 3, 4]) pages.push(...ids(await listUsers(app, headers, `limit=2&page=${page}`)));
+
+    expect(pages[0]).toBe(newest.id);
+    const tied = pages.slice(1, 7);
+    expect(tied).toEqual(users.map((u) => u.id).sort().reverse());
+    expect(new Set(pages).size).toBe(pages.length);
+  });
+
   it('la ricerca trova per nome, cognome o email senza distinguere le maiuscole', async () => {
     const app = await createTestApp();
     const headers = await loginAs(app, await givenAdmin({ name: 'Admin', surname: 'Prova' }));

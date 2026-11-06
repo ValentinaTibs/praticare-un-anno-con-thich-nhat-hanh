@@ -18,13 +18,26 @@ class ApiClient {
   final Dio _dio;
   final TokenStorage _storage;
 
-  ApiClient(this._storage)
-      : _dio = Dio(BaseOptions(
-          baseUrl: AppConstants.baseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        )) {
-    _dio.interceptors.add(_AuthInterceptor(_storage, _dio));
+  /// [onSessionExpired] runs when the backend refuses the refresh token, once
+  /// the tokens are cleared. [onForbidden] runs on every 403. [adapter] replaces
+  /// the HTTP transport in tests.
+  ApiClient(
+    this._storage, {
+    void Function()? onSessionExpired,
+    void Function()? onForbidden,
+    HttpClientAdapter? adapter,
+  }) : _dio = _newDio(adapter) {
+    _dio.interceptors.add(_AuthInterceptor(_storage, _dio, _newDio(adapter), onSessionExpired, onForbidden));
+  }
+
+  static Dio _newDio(HttpClientAdapter? adapter) {
+    final dio = Dio(BaseOptions(
+      baseUrl: AppConstants.baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ));
+    if (adapter != null) dio.httpClientAdapter = adapter;
+    return dio;
   }
 
   Future<dynamic> get(String path, {Map<String, dynamic>? query}) async {
@@ -81,10 +94,22 @@ class ApiClient {
 }
 
 class _AuthInterceptor extends Interceptor {
+  /// Marks a request already repeated with new tokens: a second 401 is final.
+  static const _retried = 'authRetried';
+
   final TokenStorage _storage;
   final Dio _dio;
 
-  _AuthInterceptor(this._storage, this._dio);
+  /// Without interceptors: the answer to a refresh must not trigger another one.
+  final Dio _refreshDio;
+  final void Function()? _onSessionExpired;
+  final void Function()? _onForbidden;
+
+  /// The refresh under way. The backend rotates the refresh token, so requests
+  /// failing together have to share one refresh: a second one would be refused.
+  Future<bool>? _refreshing;
+
+  _AuthInterceptor(this._storage, this._dio, this._refreshDio, this._onSessionExpired, this._onForbidden);
 
   @override
   Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
@@ -97,32 +122,45 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401) {
-      final refreshed = await _tryRefresh();
-      if (refreshed) {
-        final token = await _storage.getAccessToken();
-        err.requestOptions.headers['Authorization'] = 'Bearer $token';
-        try {
-          final res = await _dio.fetch(err.requestOptions);
-          return handler.resolve(res);
-        } catch (_) {}
-      }
+    final status = err.response?.statusCode;
+    if (status == 403) _onForbidden?.call();
+    final request = err.requestOptions;
+    if (status != 401 || request.extra[_retried] == true || !await _hasNewTokens(request)) {
+      return handler.next(err);
     }
-    handler.next(err);
+    request.extra[_retried] = true;
+    try {
+      handler.resolve(await _dio.fetch(request));
+    } on DioException catch (e) {
+      // The answer to the repeated request is the one that counts, e.g. a 409.
+      handler.next(e);
+    }
   }
 
-  Future<bool> _tryRefresh() async {
+  Future<bool> _hasNewTokens(RequestOptions failed) async {
+    // Another request already refreshed them while this one was on its way.
+    final token = await _storage.getAccessToken();
+    if (token != null && failed.headers['Authorization'] != 'Bearer $token') return true;
+    return _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
+  }
+
+  Future<bool> _refresh() async {
     final refreshToken = await _storage.getRefreshToken();
     if (refreshToken == null) return false;
     try {
-      final res = await _dio.post('/api/auth/refresh', data: {'refreshToken': refreshToken});
+      final res = await _refreshDio.post('/api/auth/refresh', data: {'refreshToken': refreshToken});
       await _storage.saveTokens(
         access: res.data['accessToken'] as String,
         refresh: res.data['refreshToken'] as String,
       );
       return true;
-    } catch (_) {
-      await _storage.clear();
+    } catch (e) {
+      // Only the backend's refusal ends the session: a network or server error
+      // may pass, and the tokens are still good for the next attempt.
+      if (e is DioException && e.response?.statusCode == 401) {
+        await _storage.clear();
+        _onSessionExpired?.call();
+      }
       return false;
     }
   }

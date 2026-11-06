@@ -137,6 +137,55 @@ void main() {
     expect(api.calls.last, 'GET /api/users?page=1&limit=50');
   });
 
+  group('pagina corrente', () {
+    /// A backend with [total] users split in pages of 50, recording the calls.
+    FakeApiClient pagedBackend(int Function() total) => FakeApiClient({
+          '/api/users': (String _, Map<String, dynamic>? q) {
+            final page = int.parse(q!['page'] as String);
+            final lastPage = (total() + usersPageSize - 1) ~/ usersPageSize;
+            return usersPageJson(page > lastPage ? [] : [listedUserJson('u$page')], total: total(), page: page);
+          },
+          '/api/admin/u3': '',
+          '/api/admin/u2/suspend': {'id': 'u2', 'status': 'suspended'},
+        });
+
+    test('se una rimozione svuota l\'ultima pagina torna a quella prima', () async {
+      var total = 101;
+      final notifier = await loaded(pagedBackend(() => total));
+      await notifier.goToPage(3);
+      expect(usersState.page, 3);
+
+      total = 100;
+      await notifier.act(UserAction.remove, usersState.users.single);
+
+      expect(usersState.page, 2);
+      expect(usersState.users.single.id, 'u2');
+      expect(usersState.error, isNull);
+    });
+
+    test('cambiare un filtro riparte dalla prima pagina', () async {
+      final api = pagedBackend(() => 120);
+      final notifier = await loaded(api);
+      await notifier.goToPage(3);
+
+      await notifier.setStatus('active');
+
+      expect(usersState.page, 1);
+      expect(api.calls.last, 'GET /api/users?page=1&limit=50&status=active');
+    });
+
+    test('un\'azione non fa cambiare pagina', () async {
+      final api = pagedBackend(() => 120);
+      final notifier = await loaded(api);
+      await notifier.goToPage(2);
+
+      await notifier.act(UserAction.suspend, usersState.users.single);
+
+      expect(usersState.page, 2);
+      expect(api.calls.last, 'GET /api/users?page=2&limit=50');
+    });
+  });
+
   test('un errore di caricamento finisce nello stato con il suo messaggio', () async {
     final api = FakeApiClient({'/api/users': ApiException(statusCode: 400, message: 'Dati non validi')});
     final notifier = await loaded(api);
@@ -166,7 +215,7 @@ void main() {
 
     test('un admin non agisce su sé stesso, su un altro admin né sul Super Admin', () {
       expect(actionsFor(admin, admin), isEmpty);
-      expect(restrictionFor(admin, admin), 'Questo è il tuo account.');
+      expect(restrictionFor(admin, admin), 'Non puoi intervenire sul tuo account.');
       expect(actionsFor(admin, user('a2', role: 'admin')), isEmpty);
       expect(restrictionFor(admin, user('a2', role: 'admin')), 'Solo il Super Admin può sospendere, bannare o rimuovere un admin.');
       expect(actionsFor(admin, superAdmin), isEmpty);
@@ -188,7 +237,22 @@ void main() {
       expect(actionsFor(superAdmin, admin), [UserAction.suspend, UserAction.ban, UserAction.remove]);
       expect(restrictionFor(superAdmin, admin), isNull);
       expect(actionsFor(superAdmin, superAdmin), isEmpty);
-      expect(restrictionFor(superAdmin, superAdmin), 'Questo è il tuo account.');
+      expect(restrictionFor(superAdmin, superAdmin), 'Non puoi intervenire sul tuo account.');
+    });
+
+    test('un utente bannato non si revisiona', () {
+      expect(actionsFor(admin, user('u1', status: 'banned', reviewed: false)), isEmpty);
+      expect(actionsFor(superAdmin, user('u1', status: 'banned', reviewed: false)), [UserAction.unban]);
+      expect(actionsFor(admin, user('u1', status: 'suspended', reviewed: false)).first, UserAction.review);
+    });
+
+    test('la scheda di un bannato spiega perché le azioni mancano', () {
+      expect(restrictionFor(admin, user('u1', status: 'banned')), 'Solo il Super Admin può revocare il ban.');
+      expect(
+        restrictionFor(superAdmin, user('u1', status: 'banned')),
+        'Un utente bannato non si può rimuovere: puoi solo revocare il ban.',
+      );
+      expect(restrictionFor(admin, user('u1')), isNull);
     });
   });
 }

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show HttpClientAdapter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_errors.dart';
@@ -24,6 +25,7 @@ class PanelAuthState {
 const notAdminMessage = 'Il pannello è riservato agli amministratori.';
 const emailNotVerifiedMessage =
     'Conferma la tua email con il link che hai ricevuto, poi accedi di nuovo.';
+const sessionExpiredMessage = 'Sessione scaduta, accedi di nuovo.';
 
 /// Session of the admin panel. Only admin and super_admin users get in: any
 /// other session is closed right away, on the backend too.
@@ -31,6 +33,7 @@ class PanelAuthNotifier extends StateNotifier<PanelAuthState> {
   final ApiClient _api;
   final TokenStorage _storage;
   final PanelFirebase _firebase;
+  bool _recheckingSession = false;
 
   PanelAuthNotifier(this._api, this._storage, this._firebase) : super(const PanelAuthState.loading()) {
     _restoreSession();
@@ -44,9 +47,13 @@ class PanelAuthNotifier extends StateNotifier<PanelAuthState> {
     final User user;
     try {
       user = User.fromJson(await _api.get('/api/users/me') as Map<String, dynamic>);
-    } catch (_) {
+    } catch (e) {
       await _storage.clear();
-      state = const PanelAuthState.signedOut();
+      // A refused refresh has already ended the session, with its message.
+      if (state.status == PanelAuthStatus.loading) {
+        // E.g. an admin suspended since the last visit.
+        state = PanelAuthState.signedOut(e is ApiException && e.statusCode == 403 ? e.message : null);
+      }
       return;
     }
     if (user.isAdmin) {
@@ -88,6 +95,35 @@ class PanelAuthNotifier extends StateNotifier<PanelAuthState> {
 
   Future<void> logout() => _endSession();
 
+  /// The backend refused the refresh token and the tokens are gone.
+  void sessionExpired() {
+    if (state.status != PanelAuthStatus.signedOut) state = const PanelAuthState.signedOut(sessionExpiredMessage);
+  }
+
+  /// A request got a 403, which may be about that request only (e.g. a user who
+  /// can't be touched) or about the viewer: the backend says which on
+  /// /api/users/me. A suspended or banned admin gets a 403 there too; a demoted
+  /// one no longer has an admin role.
+  Future<void> recheckSession() async {
+    if (_recheckingSession || state.status != PanelAuthStatus.signedIn) return;
+    _recheckingSession = true;
+    try {
+      final user = User.fromJson(await _api.get('/api/users/me') as Map<String, dynamic>);
+      if (!user.isAdmin) {
+        await _endSession(notAdminMessage);
+      } else if (user.role != state.user?.role) {
+        state = PanelAuthState.signedIn(user);
+      }
+    } on ApiException catch (e) {
+      if (e.statusCode == 403) {
+        await _storage.clear();
+        state = PanelAuthState.signedOut(e.message);
+      }
+    } finally {
+      _recheckingSession = false;
+    }
+  }
+
   Future<void> _startSession(Map<String, dynamic> result) async {
     // 'register': a verified email with no account on the backend.
     if (result['status'] != 'ok') throw AuthFlowException(notAdminMessage);
@@ -119,10 +155,20 @@ class PanelAuthNotifier extends StateNotifier<PanelAuthState> {
 // ── Providers ──────────────────────────────────────────────────────────────────
 
 final panelTokenStorageProvider = Provider<TokenStorage>((_) => TokenStorage());
-final panelApiClientProvider = Provider<ApiClient>((ref) => ApiClient(ref.watch(panelTokenStorageProvider)));
+
+/// The HTTP transport of the panel, replaced in tests.
+final panelHttpAdapterProvider = Provider<HttpClientAdapter?>((_) => null);
+
+final panelApiClientProvider = Provider<ApiClient>((ref) => ApiClient(
+      ref.watch(panelTokenStorageProvider),
+      adapter: ref.watch(panelHttpAdapterProvider),
+      onSessionExpired: () => ref.read(panelAuthProvider.notifier).sessionExpired(),
+      onForbidden: () => ref.read(panelAuthProvider.notifier).recheckSession(),
+    ));
 final panelFirebaseProvider = Provider<PanelFirebase>((_) => FirebasePanelAuth());
 
-final panelAuthProvider = StateNotifierProvider<PanelAuthNotifier, PanelAuthState>((ref) => PanelAuthNotifier(
+final StateNotifierProvider<PanelAuthNotifier, PanelAuthState> panelAuthProvider =
+    StateNotifierProvider<PanelAuthNotifier, PanelAuthState>((ref) => PanelAuthNotifier(
       ref.watch(panelApiClientProvider),
       ref.watch(panelTokenStorageProvider),
       ref.watch(panelFirebaseProvider),

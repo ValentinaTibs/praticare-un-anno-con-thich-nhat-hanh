@@ -61,7 +61,7 @@ class _GroupList extends StatelessWidget {
             Semantics(header: true, child: Text(title, style: theme.textTheme.titleLarge)),
             const SizedBox(height: 8),
             if (groups.isEmpty)
-              Text(empty, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline))
+              Text(empty, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))
             else
               for (final g in groups)
                 Card(

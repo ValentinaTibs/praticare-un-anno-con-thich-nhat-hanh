@@ -22,6 +22,7 @@ enum UserAction {
 
   /// The question asked before acting on [name], or null when no confirmation is needed.
   String? question(String name) => switch (this) {
+        UserAction.review => 'Segnare $name come revisionato?',
         UserAction.suspend => 'Sospendere $name?',
         UserAction.ban => 'Bannare $name?',
         UserAction.unban => 'Revocare il ban a $name?',
@@ -41,11 +42,13 @@ enum UserAction {
 
   /// What follows from the action, shown under [question].
   String get consequence => switch (this) {
+        UserAction.review => 'Potrà entrare nei prossimi percorsi senza altre revisioni. La revisione non si può annullare.',
         UserAction.suspend => 'Non potrà usare l\'app finché un admin non lo riattiva.',
         UserAction.ban =>
-          'L\'account resta bloccato e la sua email non potrà più registrarsi. Solo il Super Admin può revocare il ban.',
+          'Non potrà più usare l\'app né registrarsi di nuovo con questa email. Solo il Super Admin può revocare il ban.',
         UserAction.unban => 'Tornerà attivo e la sua email sarà sbloccata.',
-        UserAction.remove => 'L\'account e tutti i suoi dati verranno eliminati. L\'operazione non si può annullare.',
+        UserAction.remove =>
+          'L\'account e tutti i suoi dati verranno eliminati: l\'operazione non si può annullare. Potrà comunque registrarsi di nuovo con la stessa email: per impedirlo usa «Banna».',
         _ => '',
       };
 
@@ -68,8 +71,9 @@ bool _outranks(User viewer, User target) => _rank(viewer.role) > _rank(target.ro
 List<UserAction> actionsFor(User viewer, User target) {
   final canAct = _outranks(viewer, target);
   return [
-    // Reviewing is harmless and final: any admin reviews anyone but themselves.
-    if (!target.reviewedByAdmin && viewer.id != target.id) UserAction.review,
+    // Any admin reviews anyone but themselves. A banned user is going nowhere: the
+    // review only matters to enter a path, so it waits for the ban to be lifted.
+    if (!target.reviewedByAdmin && !target.isBanned && viewer.id != target.id) UserAction.review,
     // Any admin reactivates anyone, admins and the Super Admin included: whoever is
     // suspended can't do it themselves.
     if (target.isSuspended && viewer.id != target.id) UserAction.reactivate,
@@ -82,8 +86,13 @@ List<UserAction> actionsFor(User viewer, User target) {
 
 /// Why [viewer] can't suspend, ban or remove [target], or null when they can.
 String? restrictionFor(User viewer, User target) {
-  if (viewer.id == target.id) return 'Questo è il tuo account.';
+  if (viewer.id == target.id) return 'Non puoi intervenire sul tuo account.';
   if (target.isSuperAdmin) return 'Nessuno può sospendere, bannare o rimuovere il Super Admin.';
   if (!_outranks(viewer, target)) return 'Solo il Super Admin può sospendere, bannare o rimuovere un admin.';
+  if (target.isBanned) {
+    return viewer.isSuperAdmin
+        ? 'Un utente bannato non si può rimuovere: puoi solo revocare il ban.'
+        : 'Solo il Super Admin può revocare il ban.';
+  }
   return null;
 }

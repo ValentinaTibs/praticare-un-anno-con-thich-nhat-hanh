@@ -25,7 +25,7 @@ const usersQuerySchema = z.object({
   status: z.nativeEnum(UserStatus).optional(),
   reviewed: z.enum(['true', 'false']).optional(),
   groupId: z.string().min(1).optional(),
-  // Matches name, surname or email, ignoring case
+  // Each word matches name, surname or email, ignoring case
   q: z.string().trim().max(100).optional(),
 });
 
@@ -73,10 +73,15 @@ export async function userRoutes(app: FastifyInstance) {
       const where: Prisma.UserWhereInput = {};
       if (status) where.status = status;
       if (reviewed) where.reviewedByAdmin = reviewed === 'true';
+      // Nothing to review in a banned user, unless the banned are what was asked for.
+      if (reviewed === 'false' && !status) where.status = { not: UserStatus.banned };
       if (groupId) where.groupId = groupId;
       if (q) {
-        const match = { contains: q, mode: 'insensitive' } as const;
-        where.OR = [{ name: match }, { surname: match }, { email: match }];
+        // Every word has to match somewhere, so that a full name finds its user.
+        where.AND = q.split(/\s+/).map((word) => {
+          const match = { contains: word, mode: 'insensitive' } as const;
+          return { OR: [{ name: match }, { surname: match }, { email: match }] };
+        });
       }
 
       const [users, total] = await Promise.all([
@@ -84,7 +89,8 @@ export async function userRoutes(app: FastifyInstance) {
           where,
           skip: (page - 1) * limit,
           take: limit,
-          orderBy: { createdAt: 'desc' },
+          // The id settles equal dates: pages need a stable order not to repeat or skip users.
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           select: adminUserSelect,
         }),
         prisma.user.count({ where }),

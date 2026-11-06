@@ -1,6 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:community_app/core/api/api_client.dart';
 import 'package:community_app/core/storage/token_storage.dart';
 import 'package:community_app/panel/auth/panel_firebase.dart';
+import 'package:dio/dio.dart';
 
 Map<String, dynamic> userJson(String role) => {
       'id': 'u-$role',
@@ -82,6 +86,35 @@ class FakeApiClient implements ApiClient {
 
   @override
   Future<dynamic> delete(String path, {dynamic data}) async => _answer('DELETE', path);
+}
+
+/// An HTTP status and its JSON body.
+typedef FakeHttpAnswer = (int, Object?);
+
+/// HTTP transport for the real [ApiClient]: answers by path, either fixed or
+/// computed from the request by a function that may also throw or be asynchronous.
+class FakeHttp implements HttpClientAdapter {
+  final Map<String, Object> routes;
+  final List<RequestOptions> requests = [];
+
+  FakeHttp(this.routes);
+
+  /// How many requests reached [path].
+  int calls(String path) => requests.where((r) => r.path == path).length;
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    requests.add(options);
+    Object? route = routes[options.path];
+    if (route is Function) route = await (route as dynamic)(options);
+    final (status, body) = route as FakeHttpAnswer? ?? (404, {'message': 'Elemento non trovato'});
+    return ResponseBody.fromString(jsonEncode(body), status, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    });
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 class FakeTokenStorage implements TokenStorage {

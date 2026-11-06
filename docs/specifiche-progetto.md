@@ -385,3 +385,4 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Autore dei post:** l'app mostra nome e cognome dell'autore di ogni post del Canale Principale. Le specifiche lo mostrano solo nel pannello.
 - **Post di un admin rimosso:** alla rimozione il codice riporta a bozza i post programmati dell'admin. Le specifiche lasciano modelli e copie come sono, senza autore.
 - **Messaggi modificabili:** non esiste un modo per far modificare al Super Admin i testi per sospesi e bannati.
+- **Cambio di ruolo:** la rotta del backend accetta anche il ruolo Super Admin e non controlla il bersaglio, quindi il Super Admin può declassare sé stesso o nominarne un secondo. Le specifiche prevedono un solo Super Admin (#34).
