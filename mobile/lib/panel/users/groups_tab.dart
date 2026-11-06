@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../format.dart';
-import '../widgets/error_retry.dart';
+import '../../core/widgets/error_retry.dart';
 import 'group.dart';
 
 /// Active and archived groups; opening one lists its members.

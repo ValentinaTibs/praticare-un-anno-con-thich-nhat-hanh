@@ -1,3 +1,4 @@
+import 'package:community_app/core/auth/auth_errors.dart';
 import 'package:community_app/core/locale.dart';
 import 'package:community_app/panel/auth/panel_auth_notifier.dart';
 import 'package:community_app/panel/panel_app.dart';
@@ -9,6 +10,8 @@ import 'fakes.dart';
 
 const _sessionRefused = (401, {'message': 'Sessione non valida o scaduta'});
 const _unauthorized = (401, {'message': 'Non autorizzato'});
+
+Never _serverDown(RequestOptions o) => throw DioException.connectionError(requestOptions: o, reason: 'giù');
 
 /// The panel over the real ApiClient, with only the HTTP transport replaced.
 Future<void> pumpOver(WidgetTester tester, FakeHttp http, FakeTokenStorage storage) async {
@@ -155,6 +158,7 @@ void main() {
     await reloadUsers(tester);
 
     expectLoginPage('Account sospeso. Contatta un amministratore per riattivarlo.');
+    expect(http.calls('/api/auth/logout'), 1, reason: 'il refresh token va revocato');
   });
 
   testWidgets('un admin declassato col pannello aperto esce e la sessione è revocata', (tester) async {
@@ -178,6 +182,7 @@ void main() {
     await pumpOver(tester, http, storage);
 
     expectLoginPage('Account sospeso. Contatta un amministratore per riattivarlo.');
+    expect(http.calls('/api/auth/logout'), 1, reason: 'il refresh token va revocato');
   });
 
   testWidgets('un 403 sulla singola azione lascia dentro e mostra il messaggio nella scheda', (tester) async {
@@ -191,5 +196,69 @@ void main() {
     expect(find.text('Accedi'), findsNothing);
     expect(find.text('Non puoi eseguire questa azione su questo utente'), findsOneWidget);
     expect(storage.access, 'old-access');
+  });
+
+  group('all\'avvio il server non risponde', () {
+    void expectSessionKept() {
+      expect(find.text(serverUnavailableMessage), findsOneWidget);
+      expect(find.text('Riprova'), findsOneWidget);
+      expect(find.text('Accedi'), findsNothing);
+      expect(storage.access, 'old-access');
+      expect(storage.refresh, 'old-refresh');
+    }
+
+    for (final (reason, routes) in <(String, Map<String, Object>)>[
+      ('server irraggiungibile', {'/api/users/me': _serverDown}),
+      ('errore del server', {'/api/users/me': (500, {'message': 'Errore interno del server'})}),
+      ('troppe richieste', {'/api/users/me': (429, {'message': 'Too many requests'})}),
+      ('token d\'accesso scaduto e refresh che non arriva', {'/api/users/me': _unauthorized, '/api/auth/refresh': _serverDown}),
+    ]) {
+      testWidgets('$reason: la sessione resta e si può riprovare', (tester) async {
+        final http = adminBackend();
+        http.routes.addAll(routes);
+
+        await pumpOver(tester, http, storage);
+
+        expectSessionKept();
+      });
+    }
+
+    testWidgets('quando il server torna, «Riprova» riapre il pannello senza un nuovo accesso', (tester) async {
+      final http = adminBackend();
+      final me = http.routes['/api/users/me']!;
+      http.routes['/api/users/me'] = _serverDown;
+      await pumpOver(tester, http, storage);
+      expectSessionKept();
+
+      http.routes['/api/users/me'] = me;
+      await tester.tap(find.text('Riprova'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Utenti e gruppi'), findsWidgets);
+      expect(find.text('Accedi'), findsNothing);
+    });
+
+    testWidgets('se il server è ancora giù, «Riprova» resta sulla stessa schermata', (tester) async {
+      final http = adminBackend();
+      http.routes['/api/users/me'] = _serverDown;
+      await pumpOver(tester, http, storage);
+
+      await tester.tap(find.text('Riprova'));
+      await tester.pumpAndSettle();
+
+      expectSessionKept();
+      expect(http.calls('/api/users/me'), 2);
+    });
+
+    testWidgets('«Esci» porta all\'accesso e cancella la sessione', (tester) async {
+      final http = adminBackend();
+      http.routes['/api/users/me'] = _serverDown;
+      await pumpOver(tester, http, storage);
+
+      await tester.tap(find.text('Esci'));
+      await tester.pumpAndSettle();
+
+      expectLoginPage(null);
+    });
   });
 }

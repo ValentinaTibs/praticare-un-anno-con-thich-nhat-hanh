@@ -158,18 +158,21 @@ void main() {
   });
 
   group('refresh non riuscito per altri motivi', () {
-    for (final (reason, answer) in <(String, Object)>[
-      ('server irraggiungibile', (RequestOptions o) => throw DioException.connectionError(requestOptions: o, reason: 'giù')),
-      ('errore del server', (500, {'message': 'Errore interno del server'})),
-      ('troppe richieste', (429, {'message': 'Too many requests'})),
+    for (final (reason, answer, status) in <(String, Object, int)>[
+      ('server irraggiungibile', (RequestOptions o) => throw DioException.connectionError(requestOptions: o, reason: 'giù'), 0),
+      ('errore del server', (500, {'message': 'Errore interno del server'}), 500),
+      ('troppe richieste', (429, {'message': 'Too many requests'}), 429),
     ]) {
-      test('$reason: la sessione resta', () async {
+      test('$reason: la sessione resta e l\'errore è quello vero, non il 401', () async {
         final http = FakeHttp({
           '/x': (401, {'message': 'Non autorizzato'}),
           _refresh: answer,
         });
 
-        await expectLater(clientOver(http).get('/x'), throwsA(isA<ApiException>()));
+        await expectLater(
+          clientOver(http).get('/x'),
+          throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', status)),
+        );
 
         expect(storage.access, 'old-access');
         expect(storage.refresh, 'old-refresh');

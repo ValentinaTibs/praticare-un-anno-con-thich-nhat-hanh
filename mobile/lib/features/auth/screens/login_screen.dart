@@ -70,6 +70,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // A local failure, or why the session ended.
+    final error = _error ?? ref.watch(authProvider).error;
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -124,8 +126,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: const Text('Password dimenticata?'),
                   ),
                 ),
-                if (_error != null) ...[
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
+                if (error != null) ...[
+                  Text(error, style: const TextStyle(color: Colors.red)),
                   const SizedBox(height: 8),
                 ],
                 const SizedBox(height: 8),

@@ -126,12 +126,12 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ accessToken, refreshToken: newRefresh });
   });
 
-  // POST /api/auth/logout
-  app.post('/logout', { preHandler: authenticate }, async (request, reply) => {
+  // POST /api/auth/logout — the refresh token is its own credential: asking for
+  // a valid access token too would make the client rotate it first, leaving the
+  // new one alive, and would stop a suspended user from revoking it.
+  app.post('/logout', async (request, reply) => {
     const { refreshToken } = refreshBody.parse(request.body);
-    await prisma.refreshToken.deleteMany({
-      where: { userId: request.user.id, token: refreshToken },
-    });
+    await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
     return reply.send({ message: 'Disconnesso' });
   });
 

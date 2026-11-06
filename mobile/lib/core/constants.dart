@@ -1,4 +1,6 @@
 class AppConstants {
+  static const String appName = 'La via della trasformazione';
+
   // Change to your local IP when testing on a physical device
   static const String baseUrl = String.fromEnvironment(
     'API_URL',

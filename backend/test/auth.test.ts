@@ -9,6 +9,7 @@ import {
   unverifiedFirebaseTokenFor,
   loginAs,
 } from './helpers.js';
+import { prisma } from '../src/config/prisma.js';
 
 type App = Awaited<ReturnType<typeof createTestApp>>;
 
@@ -191,5 +192,65 @@ describe('POST /api/auth/register', () => {
 
     expect((await register(app, 'anna@test.local')).statusCode).toBe(201);
     expect((await register(app, 'ANNA@test.local')).statusCode).toBe(409);
+  });
+});
+
+describe('POST /api/auth/logout', () => {
+  const logout = (app: App, refreshToken: string, headers: Record<string, string> = {}) =>
+    app.inject({ method: 'POST', url: '/api/auth/logout', payload: { refreshToken }, headers });
+  const refresh = (app: App, refreshToken: string) =>
+    app.inject({ method: 'POST', url: '/api/auth/refresh', payload: { refreshToken } });
+
+  async function signedIn(app: App) {
+    const user = await givenUser();
+    const login = await verifyFirebase(app, user.email);
+    return { user, tokens: login.json() as { accessToken: string; refreshToken: string } };
+  }
+
+  it('revoca il refresh token di chi esce', async () => {
+    const app = await createTestApp();
+    const { tokens } = await signedIn(app);
+
+    const res = await logout(app, tokens.refreshToken, { authorization: `Bearer ${tokens.accessToken}` });
+
+    expect(res.statusCode).toBe(200);
+    expect((await refresh(app, tokens.refreshToken)).statusCode).toBe(401);
+  });
+
+  it('lo revoca anche con il token d\'accesso scaduto, senza costringere a un refresh', async () => {
+    const app = await createTestApp();
+    const { tokens } = await signedIn(app);
+
+    const res = await logout(app, tokens.refreshToken, { authorization: 'Bearer scaduto' });
+
+    expect(res.statusCode).toBe(200);
+    expect((await refresh(app, tokens.refreshToken)).statusCode).toBe(401);
+  });
+
+  it('lo revoca anche per un utente sospeso nel frattempo', async () => {
+    const app = await createTestApp();
+    const { user, tokens } = await signedIn(app);
+    await prisma.user.update({ where: { id: user.id }, data: { status: 'suspended' } });
+
+    const res = await logout(app, tokens.refreshToken, { authorization: `Bearer ${tokens.accessToken}` });
+
+    expect(res.statusCode).toBe(200);
+    expect((await refresh(app, tokens.refreshToken)).statusCode).toBe(401);
+  });
+
+  it('non revoca gli altri refresh token dello stesso utente', async () => {
+    const app = await createTestApp();
+    const { user, tokens } = await signedIn(app);
+    const other = (await verifyFirebase(app, user.email)).json() as { refreshToken: string };
+
+    await logout(app, tokens.refreshToken);
+
+    expect((await refresh(app, other.refreshToken)).statusCode).toBe(200);
+  });
+
+  it('un refresh token sconosciuto non è un errore', async () => {
+    const app = await createTestApp();
+
+    expect((await logout(app, 'sconosciuto')).statusCode).toBe(200);
   });
 });

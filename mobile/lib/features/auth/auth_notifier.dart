@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show HttpClientAdapter;
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,7 @@ import '../../core/storage/token_storage.dart';
 
 export '../../core/auth/auth_errors.dart';
 
-enum AuthStatus { loading, unauthenticated, authenticated }
+enum AuthStatus { loading, unauthenticated, authenticated, unavailable }
 
 /// Where the sign-in flow has to go next after a Firebase / backend step.
 enum AuthStep {
@@ -35,6 +36,9 @@ class AuthState {
   const AuthState.unauth() : this(status: AuthStatus.unauthenticated);
   AuthState.authed(User user) : this(status: AuthStatus.authenticated, user: user);
   AuthState.err(String msg) : this(status: AuthStatus.unauthenticated, error: msg);
+
+  /// The stored session could not be checked: the server did not answer.
+  const AuthState.unavailable() : this(status: AuthStatus.unavailable);
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
@@ -68,21 +72,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
   String? get firebaseEmail => Firebase.apps.isEmpty ? null : fb.FirebaseAuth.instance.currentUser?.email;
 
   Future<void> _restoreSession() async {
-    final token = await _storage.getAccessToken();
-    if (token == null) {
+    if (await _storage.getAccessToken() == null) {
       state = const AuthState.unauth();
       return;
     }
+    final User user;
     try {
-      final data = await _api.get('/api/users/me');
-      final user = User.fromJson(data as Map<String, dynamic>);
-      _socket.connect(token);
-      await _push.init();
-      state = AuthState.authed(user);
-    } catch (_) {
-      await _storage.clear();
-      state = const AuthState.unauth();
+      user = User.fromJson(await _api.get('/api/users/me') as Map<String, dynamic>);
+    } catch (e) {
+      // A refused refresh has already ended the session, with its message.
+      if (state.status != AuthStatus.loading) return;
+      if (e is ApiException && e.isTemporary) {
+        // The session may well be good: keep it for when the server answers.
+        state = const AuthState.unavailable();
+      } else {
+        // E.g. a user suspended since the last visit.
+        await _endSession(e is ApiException && e.statusCode == 403 ? authErrorMessage(e) : null);
+      }
+      return;
     }
+    // Read only now: the request above may have refreshed the token.
+    final token = await _storage.getAccessToken();
+    if (token != null) _socket.connect(token);
+    try {
+      await _push.init();
+    } catch (_) {
+      // Missing notifications are no reason to lose the session.
+    }
+    state = AuthState.authed(user);
+  }
+
+  /// Checks the stored session again.
+  Future<void> retry() async {
+    state = const AuthState.loading();
+    await _restoreSession();
   }
 
   /// Email + password sign-in on Firebase, then session exchange with the backend.
@@ -179,18 +202,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = AuthState.authed(user);
   }
 
-  Future<void> logout() async {
+  Future<void> logout() => _endSession();
+
+  /// The backend refused the refresh token and the tokens are gone.
+  void sessionExpired() {
+    if (state.status == AuthStatus.unauthenticated) return;
+    _socket.disconnect();
+    signOutFirebase();
+    state = AuthState.err(sessionExpiredMessage);
+  }
+
+  /// Revokes the refresh token on the backend, as far as possible, and clears
+  /// the session here. [error] is shown on the login screen.
+  Future<void> _endSession([String? error]) async {
+    try {
+      await _push.unregisterToken();
+    } catch (_) {}
+    // Read only now: the request above may have rotated the refresh token.
     final refreshToken = await _storage.getRefreshToken();
     if (refreshToken != null) {
       try {
-        await _push.unregisterToken();
         await _api.post('/api/auth/logout', data: {'refreshToken': refreshToken});
       } catch (_) {}
     }
     _socket.disconnect();
     await signOutFirebase();
     await _storage.clear();
-    state = const AuthState.unauth();
+    state = error == null ? const AuthState.unauth() : AuthState.err(error);
   }
 
   Future<void> confirm() async {
@@ -204,10 +242,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 final tokenStorageProvider = Provider<TokenStorage>((_) => TokenStorage());
 final socketServiceProvider = Provider<SocketService>((_) => SocketService());
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(ref.watch(tokenStorageProvider)));
+
+/// The HTTP transport of the app, replaced in tests.
+final httpAdapterProvider = Provider<HttpClientAdapter?>((_) => null);
+
+final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(
+      ref.watch(tokenStorageProvider),
+      adapter: ref.watch(httpAdapterProvider),
+      onSessionExpired: () => ref.read(authProvider.notifier).sessionExpired(),
+    ));
 final pushServiceProvider = Provider<PushService>((ref) => PushService(ref.watch(apiClientProvider)));
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) => AuthNotifier(
+final StateNotifierProvider<AuthNotifier, AuthState> authProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) => AuthNotifier(
       ref.watch(apiClientProvider),
       ref.watch(tokenStorageProvider),
       ref.watch(socketServiceProvider),

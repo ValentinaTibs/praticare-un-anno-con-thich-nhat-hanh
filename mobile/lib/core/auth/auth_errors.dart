@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../api/api_client.dart';
 
+const sessionExpiredMessage = 'Sessione scaduta, accedi di nuovo.';
+const serverUnavailableMessage = 'Impossibile contattare il server. Riprova tra poco.';
+
 /// Raised for auth problems that are not a [fb.FirebaseAuthException] nor an
 /// [ApiException] (Firebase not configured, no signed-in Firebase user).
 class AuthFlowException implements Exception {

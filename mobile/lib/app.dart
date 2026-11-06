@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/constants.dart';
+import 'core/widgets/session_unavailable.dart';
 import 'features/auth/auth_notifier.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
@@ -13,6 +15,11 @@ import 'features/profile/screens/profile_screen.dart';
 import 'features/admin/screens/admin_screen.dart';
 
 export 'core/locale.dart';
+
+final _theme = ThemeData(
+  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5C6BC0)),
+  useMaterial3: true,
+);
 
 final _routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -53,13 +60,18 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(authProvider).status == AuthStatus.unavailable) {
+      final auth = ref.read(authProvider.notifier);
+      return MaterialApp(
+        title: AppConstants.appName,
+        theme: _theme,
+        home: SessionUnavailable(onRetry: auth.retry, onLogout: auth.logout),
+      );
+    }
     final router = ref.watch(_routerProvider);
     return MaterialApp.router(
-      title: 'Community',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5C6BC0)),
-        useMaterial3: true,
-      ),
+      title: AppConstants.appName,
+      theme: _theme,
       locale: const Locale('it', 'IT'),
       supportedLocales: const [Locale('it', 'IT')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

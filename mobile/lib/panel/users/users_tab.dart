@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/user.dart';
 import '../format.dart';
-import '../widgets/error_retry.dart';
+import '../../core/widgets/error_retry.dart';
 import 'group.dart';
 import 'user_details_dialog.dart';
 import 'users_notifier.dart';

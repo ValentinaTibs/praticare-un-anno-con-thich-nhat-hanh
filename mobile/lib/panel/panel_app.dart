@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../core/widgets/session_unavailable.dart';
 import 'auth/login_page.dart';
 import 'auth/panel_auth_notifier.dart';
 import 'sections.dart';
@@ -9,6 +10,12 @@ import 'shell/panel_shell.dart';
 import 'users/users_page.dart';
 
 const _loginPath = '/accesso';
+const _title = 'Pannello di amministrazione';
+
+final _theme = ThemeData(
+  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5C6BC0)),
+  useMaterial3: true,
+);
 
 /// Sections whose page is ready; the others show a placeholder.
 const _sectionPages = <String, Widget>{
@@ -52,16 +59,23 @@ class PanelApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(panelAuthProvider).status == PanelAuthStatus.loading) {
+    final status = ref.watch(panelAuthProvider).status;
+    if (status == PanelAuthStatus.loading) {
       return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
     }
+    if (status == PanelAuthStatus.unavailable) {
+      final auth = ref.read(panelAuthProvider.notifier);
+      return MaterialApp(
+        title: _title,
+        debugShowCheckedModeBanner: false,
+        theme: _theme,
+        home: SessionUnavailable(onRetry: auth.retry, onLogout: auth.logout),
+      );
+    }
     return MaterialApp.router(
-      title: 'Pannello di amministrazione',
+      title: _title,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5C6BC0)),
-        useMaterial3: true,
-      ),
+      theme: _theme,
       locale: const Locale('it', 'IT'),
       supportedLocales: const [Locale('it', 'IT')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

@@ -6,7 +6,7 @@ import '../../core/models/user.dart';
 import '../../core/storage/token_storage.dart';
 import 'panel_firebase.dart';
 
-enum PanelAuthStatus { loading, signedOut, signedIn }
+enum PanelAuthStatus { loading, signedOut, signedIn, unavailable }
 
 class PanelAuthState {
   final PanelAuthStatus status;
@@ -20,12 +20,14 @@ class PanelAuthState {
   const PanelAuthState.loading() : this._(PanelAuthStatus.loading);
   const PanelAuthState.signedOut([String? message]) : this._(PanelAuthStatus.signedOut, message: message);
   const PanelAuthState.signedIn(User user) : this._(PanelAuthStatus.signedIn, user: user);
+
+  /// The stored session could not be checked: the server did not answer.
+  const PanelAuthState.unavailable() : this._(PanelAuthStatus.unavailable);
 }
 
 const notAdminMessage = 'Il pannello è riservato agli amministratori.';
 const emailNotVerifiedMessage =
     'Conferma la tua email con il link che hai ricevuto, poi accedi di nuovo.';
-const sessionExpiredMessage = 'Sessione scaduta, accedi di nuovo.';
 
 /// Session of the admin panel. Only admin and super_admin users get in: any
 /// other session is closed right away, on the backend too.
@@ -48,11 +50,14 @@ class PanelAuthNotifier extends StateNotifier<PanelAuthState> {
     try {
       user = User.fromJson(await _api.get('/api/users/me') as Map<String, dynamic>);
     } catch (e) {
-      await _storage.clear();
       // A refused refresh has already ended the session, with its message.
-      if (state.status == PanelAuthStatus.loading) {
+      if (state.status != PanelAuthStatus.loading) return;
+      if (e is ApiException && e.isTemporary) {
+        // The session may well be good: keep it for when the server answers.
+        state = const PanelAuthState.unavailable();
+      } else {
         // E.g. an admin suspended since the last visit.
-        state = PanelAuthState.signedOut(e is ApiException && e.statusCode == 403 ? e.message : null);
+        await _endSession(e is ApiException && e.statusCode == 403 ? e.message : null);
       }
       return;
     }
@@ -95,6 +100,12 @@ class PanelAuthNotifier extends StateNotifier<PanelAuthState> {
 
   Future<void> logout() => _endSession();
 
+  /// Checks the stored session again.
+  Future<void> retry() async {
+    state = const PanelAuthState.loading();
+    await _restoreSession();
+  }
+
   /// The backend refused the refresh token and the tokens are gone.
   void sessionExpired() {
     if (state.status != PanelAuthStatus.signedOut) state = const PanelAuthState.signedOut(sessionExpiredMessage);
@@ -115,10 +126,7 @@ class PanelAuthNotifier extends StateNotifier<PanelAuthState> {
         state = PanelAuthState.signedIn(user);
       }
     } on ApiException catch (e) {
-      if (e.statusCode == 403) {
-        await _storage.clear();
-        state = PanelAuthState.signedOut(e.message);
-      }
+      if (e.statusCode == 403) await _endSession(e.message);
     } finally {
       _recheckingSession = false;
     }

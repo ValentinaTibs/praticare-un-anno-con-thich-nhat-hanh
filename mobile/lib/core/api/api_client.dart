@@ -10,6 +10,10 @@ class ApiException implements Exception {
 
   ApiException({required this.statusCode, required this.message, this.contact, this.code});
 
+  /// The server could not be reached or could not answer: nothing was decided
+  /// about the request, which may well work later.
+  bool get isTemporary => statusCode == 0 || statusCode == 429 || statusCode >= 500;
+
   @override
   String toString() => message;
 }
@@ -125,14 +129,15 @@ class _AuthInterceptor extends Interceptor {
     final status = err.response?.statusCode;
     if (status == 403) _onForbidden?.call();
     final request = err.requestOptions;
-    if (status != 401 || request.extra[_retried] == true || !await _hasNewTokens(request)) {
-      return handler.next(err);
-    }
-    request.extra[_retried] = true;
+    if (status != 401 || request.extra[_retried] == true) return handler.next(err);
     try {
+      if (!await _hasNewTokens(request)) return handler.next(err);
+      request.extra[_retried] = true;
       handler.resolve(await _dio.fetch(request));
     } on DioException catch (e) {
-      // The answer to the repeated request is the one that counts, e.g. a 409.
+      // This failure is the one that counts, not the 401 that led here: the
+      // answer to the repeated request (e.g. a 409), or a refresh that could not
+      // be done, which says nothing about the session.
       handler.next(e);
     }
   }
@@ -154,13 +159,15 @@ class _AuthInterceptor extends Interceptor {
         refresh: res.data['refreshToken'] as String,
       );
       return true;
-    } catch (e) {
+    } on DioException catch (e) {
       // Only the backend's refusal ends the session: a network or server error
       // may pass, and the tokens are still good for the next attempt.
-      if (e is DioException && e.response?.statusCode == 401) {
-        await _storage.clear();
-        _onSessionExpired?.call();
-      }
+      if (e.response?.statusCode != 401) rethrow;
+      await _storage.clear();
+      _onSessionExpired?.call();
+      return false;
+    } catch (_) {
+      // E.g. an answer without tokens. Letting it through would hang the request.
       return false;
     }
   }
