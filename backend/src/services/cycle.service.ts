@@ -21,11 +21,20 @@ export async function closeExpiredCycles() {
 
 // Brings to life the groups of cycles whose journey has started.
 export async function startDueGroups() {
+  const now = new Date();
   const cycles = await prisma.registrationCycle.findMany({
-    where: { startsAt: { lte: new Date() }, group: null, participationRequests: { some: {} } },
+    where: { startsAt: { lte: now }, group: null, participationRequests: { some: {} } },
     include: {
       participationRequests: {
-        where: { user: { status: 'active', reviewedByAdmin: true } },
+        where: {
+          user: {
+            status: 'active',
+            reviewedByAdmin: true,
+            // One journey at a time: a request made while a due group was still to be created
+            // may belong to someone who has just joined that group.
+            OR: [{ groupId: null }, { group: { endedAt: { lte: now } } }],
+          },
+        },
         select: { userId: true },
       },
     },

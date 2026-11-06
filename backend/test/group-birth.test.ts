@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { prisma } from '../src/config/prisma.js';
 import { processMissedConfirmations } from '../src/services/confirmation.service.js';
 import { startDueGroups } from '../src/services/cycle.service.js';
-import { createTestApp, givenAdmin, givenUser, loginAs } from './helpers.js';
+import { createTestApp, givenAdmin, givenGroup, givenUser, loginAs } from './helpers.js';
 
 type App = Awaited<ReturnType<typeof createTestApp>>;
 
@@ -166,5 +166,38 @@ describe('Nascita del gruppo', () => {
 
     const res = await app.inject({ method: 'GET', url: '/api/groups', headers: admin });
     expect(res.json()).toMatchObject([{ cycleId: cycle.id, memberCount: 1 }]);
+  });
+
+  it('chi è già stato revisionato in un percorso finito entra senza una nuova revisione', async () => {
+    const app = await createTestApp();
+    const past = await prisma.registrationCycle.create({
+      data: {
+        status: 'closed',
+        startsAt: daysAgo(400),
+        group: { create: { startedAt: daysAgo(400), endedAt: daysAgo(35) } },
+      },
+      include: { group: true },
+    });
+    const cycle = await givenDueCycle();
+    const veteran = await givenRequester(cycle, { group: { connect: { id: past.group!.id } } });
+    const headers = await loginAs(app, veteran);
+
+    await startDueGroups();
+
+    const me = (await app.inject({ method: 'GET', url: '/api/users/me', headers })).json();
+    expect(me.group.startedAt).toBe(cycle.startsAt.toISOString());
+  });
+
+  it('un utente già in un gruppo attivo non viene spostato nel nuovo gruppo', async () => {
+    const app = await createTestApp();
+    const active = await givenGroup();
+    const cycle = await givenDueCycle();
+    const member = await givenRequester(cycle, { group: { connect: { id: active.id } } });
+    const headers = await loginAs(app, member);
+
+    await startDueGroups();
+
+    const me = (await app.inject({ method: 'GET', url: '/api/users/me', headers })).json();
+    expect(me.group.id).toBe(active.id);
   });
 });
