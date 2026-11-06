@@ -85,7 +85,7 @@
 - L'utente può **annullare** la richiesta fino alla data di inizio, e rifarla finché il ciclo è aperto.
 - Gli utenti in attesa vedono in app **quante persone** hanno chiesto di partecipare al prossimo percorso. Il numero si aggiorna, ma non parte una notifica a ogni nuova richiesta.
 - Si partecipa a **un percorso alla volta**: chi è in un gruppo attivo non può chiedere di partecipare al successivo. Chi ha già una richiesta in corso per un percorso non ancora iniziato deve annullarla prima di chiedere di partecipare a un altro.
-- Il **ban** cancella la richiesta in corso. Chi è **sospeso** la conserva, ma non viene contato tra i richiedenti.
+- Il **ban** cancella la richiesta in corso. Chi è **sospeso** la conserva, ma non viene contato tra i richiedenti. Se è ancora sospeso alla data di inizio non entra nel gruppo e la sua richiesta decade.
 
 ### Gruppi
 - Un **gruppo** è l'insieme delle persone che hanno chiesto di partecipare nello **stesso ciclo**.
