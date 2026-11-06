@@ -99,6 +99,16 @@ Lo script crea un Super Admin con l'email segnaposto `superadmin@example.com`. P
 1. Cambia l'email in `prisma/seed.ts` prima di lanciarlo.
 2. Crea in Firebase un account con la stessa email e confermala. Il modo più semplice è dall'app: scegli *Crea un account* e apri il link che arriva via email. Gli account aggiunti a mano nella console Firebase, in *Authentication*, poi *Users*, nascono non verificati: al primo accesso dall'app si apre la schermata di conferma, tocca *Invia di nuovo* e apri il link.
 
+### Dati di prova (facoltativo)
+
+```bash
+npm run db:seed:mock
+```
+
+Lo script riempie il database locale con utenti inventati: un gruppo attivo e uno archiviato, sospesi e bannati, utenti in attesa, un ciclo aperto e 12 richieste di partecipazione. Aggiunge solo ciò che manca e non modifica ciò che esiste, quindi si può rilanciare. Se il ciclo aperto è scaduto ne crea uno nuovo. Una richiesta annullata di un utente di prova torna al lancio successivo.
+
+Funziona solo su un database locale: con un altro `DATABASE_URL`, o con `NODE_ENV=production`, si ferma con un errore. Per entrare con questi utenti serve l'accesso di sviluppo.
+
 ### 6. Avviare il server
 
 ```bash

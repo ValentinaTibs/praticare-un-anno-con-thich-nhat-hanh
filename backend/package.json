@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:seed": "tsx --env-file=.env prisma/seed.ts",
+    "db:seed:mock": "tsx --env-file=.env scripts/seed-mock.ts",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
