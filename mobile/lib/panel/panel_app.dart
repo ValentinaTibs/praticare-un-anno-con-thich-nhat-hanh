@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/widgets/session_unavailable.dart';
 import 'auth/login_page.dart';
 import 'auth/panel_auth_notifier.dart';
+import 'cycles/cycles_page.dart';
 import 'sections.dart';
 import 'shell/panel_shell.dart';
 import 'users/users_page.dart';
@@ -20,6 +21,7 @@ final _theme = ThemeData(
 /// Sections whose page is ready; the others show a placeholder.
 const _sectionPages = <String, Widget>{
   '/utenti': UsersPage(),
+  '/cicli': CyclesPage(),
 };
 
 final panelRouterProvider = Provider<GoRouter>((ref) {

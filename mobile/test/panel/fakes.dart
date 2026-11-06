@@ -61,6 +61,9 @@ class FakeApiClient implements ApiClient {
   final Map<String, Object> responses;
   final List<String> calls = [];
 
+  /// The data sent by each POST and PATCH, in order.
+  final List<dynamic> bodies = [];
+
   FakeApiClient(this.responses);
 
   dynamic _answer(String method, String path, [Map<String, dynamic>? query]) {
@@ -79,10 +82,16 @@ class FakeApiClient implements ApiClient {
   Future<dynamic> get(String path, {Map<String, dynamic>? query}) async => _answer('GET', path, query);
 
   @override
-  Future<dynamic> post(String path, {dynamic data}) async => _answer('POST', path);
+  Future<dynamic> post(String path, {dynamic data}) async {
+    bodies.add(data);
+    return _answer('POST', path);
+  }
 
   @override
-  Future<dynamic> patch(String path, {dynamic data}) async => _answer('PATCH', path);
+  Future<dynamic> patch(String path, {dynamic data}) async {
+    bodies.add(data);
+    return _answer('PATCH', path);
+  }
 
   @override
   Future<dynamic> delete(String path, {dynamic data}) async => _answer('DELETE', path);

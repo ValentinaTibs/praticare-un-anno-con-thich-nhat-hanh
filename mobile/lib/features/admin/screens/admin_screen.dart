@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../auth/auth_notifier.dart';
-import '../../../core/api/api_client.dart';
 import '../../../core/models/user.dart';
 
 final _usersProvider = FutureProvider.family<List<User>, String?>((ref, filter) async {
@@ -350,25 +349,7 @@ class _CyclesTab extends ConsumerWidget {
                 backgroundColor: isOpen ? Colors.green : Colors.grey,
               ),
               const SizedBox(height: 24),
-              if (!isOpen)
-                FilledButton.icon(
-                  onPressed: () async {
-                    await ref.read(apiClientProvider).post('/api/cycles/open');
-                    ref.invalidate(_cycleProvider);
-                  },
-                  icon: const Icon(Icons.lock_open),
-                  label: const Text('Apri le iscrizioni'),
-                )
-              else
-                FilledButton.icon(
-                  onPressed: () async {
-                    await ref.read(apiClientProvider).post('/api/cycles/close');
-                    ref.invalidate(_cycleProvider);
-                  },
-                  icon: const Icon(Icons.lock),
-                  label: const Text('Chiudi le iscrizioni'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-                ),
+              const Text('I cicli si gestiscono dal pannello web.'),
             ],
           ),
         );

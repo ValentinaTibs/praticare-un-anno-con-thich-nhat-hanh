@@ -376,7 +376,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. Alla registrazione l'utente non entra più in un gruppo, ma il gruppo non nasce ancora alla data di inizio: per ora nessun nuovo utente entra in un gruppo (#92).
 - **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. Mancano la richiesta di partecipazione, il suo annullamento, il conteggio dei richiedenti e la schermata "In attesa" nell'app.
 - **Revisione come approvazione:** il codice ha il campo `reviewedByAdmin`, ma non lo usa per decidere chi entra nel gruppo.
-- **Apertura del ciclo dall'app:** il pulsante "Apri le iscrizioni" nelle schermate admin dell'app non invia la data di chiusura e il backend risponde con un errore. Con le nuove specifiche l'apertura passa al pannello web (#34).
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa. Per questo il pannello non mostra ancora gruppi archiviati.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import e l'export in CSV, il job delle 07:00 né l'interruttore nel profilo.
 - **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.
