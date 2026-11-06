@@ -200,4 +200,38 @@ describe('Nascita del gruppo', () => {
     const me = (await app.inject({ method: 'GET', url: '/api/users/me', headers })).json();
     expect(me.group.id).toBe(active.id);
   });
+
+  it('dopo uno spegnimento del server il gruppo nasce alla ripartenza con la sua data di inizio', async () => {
+    const app = await createTestApp();
+    const startsAt = daysAgo(3);
+    const cycle = await givenDueCycle(startsAt);
+    await givenRequester(cycle);
+
+    await startDueGroups();
+
+    expect(await groups(app)).toMatchObject([{ cycleId: cycle.id, startedAt: startsAt.toISOString() }]);
+  });
+
+  it('eseguire di nuovo il controllo non crea un secondo gruppo per lo stesso ciclo', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle();
+    await givenRequester(cycle);
+
+    await startDueGroups();
+    await startDueGroups();
+
+    expect(await groups(app)).toMatchObject([{ cycleId: cycle.id, memberCount: 1 }]);
+  });
+
+  it('due controlli in parallelo creano un solo gruppo senza errori', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle();
+    await givenRequester(cycle);
+    await givenRequester(cycle);
+
+    const runs = await Promise.allSettled([startDueGroups(), startDueGroups(), startDueGroups()]);
+
+    expect(runs.map(({ status }) => status)).toEqual(['fulfilled', 'fulfilled', 'fulfilled']);
+    expect(await groups(app)).toMatchObject([{ cycleId: cycle.id, memberCount: 2 }]);
+  });
 });

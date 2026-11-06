@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 
 // A cycle past its closing date counts as closed even before the job marks it,
@@ -19,7 +20,8 @@ export async function closeExpiredCycles() {
   });
 }
 
-// Brings to life the groups of cycles whose journey has started.
+// Brings to life the groups of cycles whose journey has started. Late runs catch up after
+// downtime: the group still starts on the cycle's date, and runs can't create it twice.
 export async function startDueGroups() {
   const now = new Date();
   const cycles = await prisma.registrationCycle.findMany({
@@ -43,24 +45,29 @@ export async function startDueGroups() {
   for (const cycle of cycles) {
     const memberIds = cycle.participationRequests.map(({ userId }) => userId);
 
-    await prisma.$transaction(async (tx) => {
-      // Every request lapses here, so a review arriving later can't bring a group to life.
-      await tx.participationRequest.deleteMany({ where: { cycleId: cycle.id } });
-      if (memberIds.length === 0) return;
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Every request lapses here, so a review arriving later can't bring a group to life.
+        await tx.participationRequest.deleteMany({ where: { cycleId: cycle.id } });
+        if (memberIds.length === 0) return;
 
-      await tx.group.create({
-        data: {
-          cycleId: cycle.id,
-          startedAt: cycle.startsAt,
-          members: { connect: memberIds.map((id) => ({ id })) },
-        },
+        await tx.group.create({
+          data: {
+            cycleId: cycle.id,
+            startedAt: cycle.startsAt,
+            members: { connect: memberIds.map((id) => ({ id })) },
+          },
+        });
+        await tx.user.updateMany({ where: { id: { in: memberIds } }, data: { lastConfirmedAt: cycle.startsAt } });
+        // A round left pending from before must not suspend someone who has just been confirmed.
+        await tx.confirmationRequest.updateMany({
+          where: { userId: { in: memberIds }, status: 'pending' },
+          data: { status: 'confirmed', confirmedAt: cycle.startsAt },
+        });
       });
-      await tx.user.updateMany({ where: { id: { in: memberIds } }, data: { lastConfirmedAt: cycle.startsAt } });
-      // A round left pending from before must not suspend someone who has just been confirmed.
-      await tx.confirmationRequest.updateMany({
-        where: { userId: { in: memberIds }, status: 'pending' },
-        data: { status: 'confirmed', confirmedAt: cycle.startsAt },
-      });
-    });
+    } catch (error) {
+      // Another run created this group first: the unique index on the cycle stopped this one.
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+    }
   }
 }

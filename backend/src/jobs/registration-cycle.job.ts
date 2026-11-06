@@ -7,6 +7,9 @@ async function checkCycles() {
 }
 
 export function startRegistrationCycleJob() {
+  // At startup too, to catch up on a date reached while the server was off
+  checkCycles().catch((error) => console.error('Controllo dei cicli non riuscito', error));
+
   // Every minute — close cycles at their closing date, create groups at their start date
   cron.schedule('* * * * *', async () => {
     await checkCycles();
