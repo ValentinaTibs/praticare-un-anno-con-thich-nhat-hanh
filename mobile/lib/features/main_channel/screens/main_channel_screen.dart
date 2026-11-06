@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/constants.dart';
 import '../main_channel_notifier.dart';
 import '../../../core/models/main_channel_post.dart';
 
@@ -12,7 +13,7 @@ class MainChannelScreen extends ConsumerWidget {
     final state = ref.watch(mainChannelProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Community')),
+      appBar: AppBar(title: const Text(AppConstants.appName)),
       body: RefreshIndicator(
         onRefresh: () => ref.read(mainChannelProvider.notifier).load(refresh: true),
         child: state.loading && state.posts.isEmpty
