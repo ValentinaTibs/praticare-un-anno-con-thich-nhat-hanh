@@ -92,4 +92,23 @@ describe('Nascita del gruppo', () => {
     const next = await app.inject({ method: 'GET', url: '/api/cycles/next', headers: await loginAs(app, suspended) });
     expect(next.json()).toMatchObject({ requested: false });
   });
+
+  it('senza richiedenti revisionati il gruppo non nasce', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle();
+    await givenRequester(cycle, { reviewedByAdmin: false });
+
+    await startDueGroups();
+
+    expect(await groups(app)).toEqual([]);
+  });
+
+  it('senza richiedenti il gruppo non nasce', async () => {
+    const app = await createTestApp();
+    await givenDueCycle();
+
+    await startDueGroups();
+
+    expect(await groups(app)).toEqual([]);
+  });
 });

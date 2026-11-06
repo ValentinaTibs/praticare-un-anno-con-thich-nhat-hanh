@@ -33,6 +33,7 @@ export async function startDueGroups() {
 
   for (const cycle of cycles) {
     const memberIds = cycle.participationRequests.map(({ userId }) => userId);
+    if (memberIds.length === 0) continue;
 
     await prisma.$transaction(async (tx) => {
       await tx.group.create({
