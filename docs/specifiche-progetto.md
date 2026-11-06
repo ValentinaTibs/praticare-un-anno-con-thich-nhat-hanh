@@ -66,10 +66,11 @@
 - **Solo il Super Admin** apre i cicli. Può esserci un solo ciclo aperto alla volta.
 - All'apertura il Super Admin imposta:
   - la **data di chiusura** delle richieste;
-  - la **data di inizio** del percorso, uguale o successiva alla chiusura;
+  - la **data di inizio** del percorso. La chiusura deve avvenire entro le 00:00 di questa data, quando nasce il gruppo;
   - la **durata** del percorso in giorni, 365 se non indicata.
 - Il ciclo si chiude automaticamente alla data di chiusura. Il Super Admin può chiuderlo prima.
 - Fino al giorno di inizio il Super Admin può modificare la data di chiusura, la data di inizio e la durata del percorso. Dopo l'inizio non si può modificare nulla.
+- Una nuova data di chiusura riapre un ciclo già chiuso, purché non ce ne sia un altro aperto.
 - Se cambia la data di inizio, chi ha chiesto di partecipare riceve una notifica.
 - Nella prima release un ciclo non si può annullare. Per rinviare il percorso si sposta la data di inizio.
 - All'apertura del ciclo tutti gli utenti in attesa ricevono una notifica, ad esempio "Sono aperte le richieste per il percorso che inizia il 12 gennaio".
@@ -349,7 +350,7 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti per ogni gruppo data di inizio e durata, con scadenza alle 23:59 dell'ultimo giorno, e che possa modificare o annullare il round finché non è iniziato.
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
 - **Già allineato:** i round di conferma escludono già admin e Super Admin.
-- **Date del ciclo:** il codice gestisce la data di chiusura e la chiusura automatica, ma non la data di inizio del percorso né la durata. Il gruppo nasce all'apertura del ciclo invece che alla data di inizio, e né le date né la durata si possono modificare.
+- **Nascita del gruppo:** il codice gestisce date e durata del ciclo e la loro modifica fino all'inizio, e il gruppo non nasce più all'apertura. Manca ancora la nascita del gruppo alla data di inizio (#92): finché non c'è, un nuovo ciclo non crea nessun gruppo.
 - **Programmazione ricorrente del cerchio:** il codice prevede solo l'apertura manuale da parte di un admin. Le specifiche chiedono un appuntamento settimanale con giorno, ora di inizio e durata, uguale per tutti i gruppi.
 - **Moderazione del cerchio:** il backend permette a un admin di scegliere il gruppo con `?groupId=` e di vederne i membri, ma per leggere i messaggi deve entrare nel cerchio. Non c'è un elenco dei cerchi aperti di tutti i gruppi. Per il pannello servono questo elenco e, per ogni cerchio, i messaggi senza entrarci.
 - **Avviso di chiusura del cerchio:** il codice lo manda a tutti i membri del gruppo. Le specifiche lo mandano solo a chi è nel cerchio.

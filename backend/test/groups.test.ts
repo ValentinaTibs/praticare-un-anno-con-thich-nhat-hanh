@@ -8,24 +8,7 @@ import {
   loginAs,
 } from './helpers.js';
 
-type App = Awaited<ReturnType<typeof createTestApp>>;
-type Headers = { authorization: string };
-
-const nextWeek = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-const openCycle = (app: App, headers: Headers) =>
-  app.inject({ method: 'POST', url: '/api/cycles/open', headers, payload: { scheduledClosedAt: nextWeek() } });
-
 describe('Gruppi', () => {
-  it('aprire un ciclo crea un gruppo che inizia all\'apertura', async () => {
-    const app = await createTestApp();
-    const headers = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
-
-    const res = await openCycle(app, headers);
-
-    expect(res.statusCode).toBe(201);
-    expect(res.json().group).toMatchObject({ startedAt: res.json().openedAt, endedAt: null });
-  });
-
   it('gli admin vedono tutti i gruppi con il numero di membri', async () => {
     const app = await createTestApp();
     const first = await givenGroup();

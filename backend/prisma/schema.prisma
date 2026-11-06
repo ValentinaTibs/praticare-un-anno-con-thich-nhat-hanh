@@ -165,6 +165,8 @@ model RegistrationCycle {
   openedAt          DateTime?   @map("opened_at")
   scheduledClosedAt DateTime?   @map("scheduled_closed_at")
   closedAt          DateTime?   @map("closed_at")
+  startsAt          DateTime    @map("starts_at")
+  durationDays      Int         @default(365) @map("duration_days")
 
   opener User?  @relation(fields: [openedBy], references: [id])
   group  Group?
