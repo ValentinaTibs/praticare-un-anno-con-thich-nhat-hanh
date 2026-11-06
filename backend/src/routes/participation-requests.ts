@@ -4,6 +4,7 @@ import { prisma } from '../config/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
 import { findOpenCycle } from '../services/cycle.service.js';
+import { adminUserSelect } from './users.js';
 
 const IN_GROUP = 'Partecipi già a un percorso';
 const ALREADY_REQUESTED = 'Hai già una richiesta in corso';
@@ -114,17 +115,7 @@ export async function participationRequestRoutes(app: FastifyInstance) {
           orderBy: [{ user: { reviewedByAdmin: 'asc' } }, { createdAt: 'asc' }, { id: 'asc' }],
           select: {
             createdAt: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                surname: true,
-                email: true,
-                motivation: true,
-                status: true,
-                reviewedByAdmin: true,
-              },
-            },
+            user: { select: adminUserSelect },
           },
         },
       },

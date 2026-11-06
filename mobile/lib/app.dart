@@ -11,6 +11,8 @@ import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/verify_email_screen.dart';
 import 'features/main_channel/screens/main_channel_screen.dart';
 import 'features/sharing_channel/screens/sharing_channel_screen.dart';
+import 'features/waiting/next_journey.dart';
+import 'features/waiting/screens/waiting_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 import 'features/admin/screens/admin_screen.dart';
 
@@ -20,6 +22,8 @@ final _theme = ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5C6BC0)),
   useMaterial3: true,
 );
+
+const _waitingPath = '/home/waiting';
 
 final _routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -34,6 +38,15 @@ final _routerProvider = Provider<GoRouter>((ref) {
       if (isLoading) return null;
       if (!isAuth && !onAuth) return '/auth/login';
       if (isAuth && onAuth) return '/home';
+      if (!isAuth) return null;
+
+      // Waiting users have no Main Channel and no sharing channel.
+      final location = state.matchedLocation;
+      final waiting = authState.user?.isWaiting ?? false;
+      if (waiting && (location.startsWith('/home/main-channel') || location.startsWith('/home/sharing'))) {
+        return _waitingPath;
+      }
+      if (!waiting && location.startsWith(_waitingPath)) return '/home/main-channel';
       return null;
     },
     routes: [
@@ -45,6 +58,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state, child) => _HomeShell(child: child, location: state.matchedLocation),
         routes: [
           GoRoute(path: '/home', redirect: (_, __) => '/home/main-channel'),
+          GoRoute(path: _waitingPath, builder: (_, __) => const WaitingScreen()),
           GoRoute(path: '/home/main-channel', builder: (_, __) => const MainChannelScreen()),
           GoRoute(path: '/home/sharing', builder: (_, __) => const SharingChannelScreen()),
           GoRoute(path: '/home/profile', builder: (_, __) => const ProfileScreen()),
@@ -80,20 +94,49 @@ class App extends ConsumerWidget {
   }
 }
 
-class _HomeShell extends ConsumerWidget {
+class _HomeShell extends ConsumerStatefulWidget {
   final Widget child;
   final String location;
 
   const _HomeShell({required this.child, required this.location});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends ConsumerState<_HomeShell> {
+  // A group may have started or ended while the app was in the background.
+  late final _lifecycle = AppLifecycleListener(onResume: () {
+    ref.read(authProvider.notifier).refreshUser();
+    ref.invalidate(nextJourneyProvider);
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle; // created here: late fields start only when read
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final isAdmin = user?.isAdmin ?? false;
+    final waiting = user?.isWaiting ?? false;
+    final location = widget.location;
 
     final tabs = [
-      (path: '/home/main-channel', icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
-      (path: '/home/sharing', icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Condivisione'),
+      if (waiting)
+        (path: _waitingPath, icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home')
+      else ...[
+        (path: '/home/main-channel', icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
+        (path: '/home/sharing', icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Condivisione'),
+      ],
       (path: '/home/profile', icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profilo'),
       if (isAdmin)
         (path: '/home/admin', icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: 'Admin'),
@@ -102,7 +145,7 @@ class _HomeShell extends ConsumerWidget {
     final currentIndex = tabs.indexWhere((t) => location.startsWith(t.path));
 
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex < 0 ? 0 : currentIndex,
         onDestinationSelected: (i) => context.go(tabs[i].path),

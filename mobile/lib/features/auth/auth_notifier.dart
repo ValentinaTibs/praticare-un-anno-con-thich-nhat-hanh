@@ -231,6 +231,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = error == null ? const AuthState.unauth() : AuthState.err(error);
   }
 
+  /// Reads the user again: a group may have started or ended meanwhile. The state
+  /// changes only if the group did, because the router restarts when it changes.
+  Future<void> refreshUser() async {
+    try {
+      final user = User.fromJson(await _api.get('/api/users/me') as Map<String, dynamic>);
+      final current = state.user;
+      if (state.status != AuthStatus.authenticated || current == null) return;
+      if (user.groupId != current.groupId || user.groupEndedAt != current.groupEndedAt) {
+        state = AuthState.authed(user);
+      }
+    } on ApiException catch (e) {
+      // Suspended or banned meanwhile. Anything else can wait for the next try.
+      if (e.statusCode == 403 && state.status == AuthStatus.authenticated) await _endSession(authErrorMessage(e));
+    } catch (_) {}
+  }
+
   Future<void> confirm() async {
     await _api.post('/api/confirmations/confirm');
     final data = await _api.get('/api/users/me');

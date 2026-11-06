@@ -242,7 +242,7 @@ describe('Elenco dei richiedenti', () => {
         id: cycle.id,
         requests: [
           { id: toReview.id, motivation: 'Voglio praticare', reviewedByAdmin: false },
-          { id: reviewed.id, motivation: 'Già nota', reviewedByAdmin: true },
+          { id: reviewed.id, motivation: 'Già nota', reviewedByAdmin: true, role: 'user' },
         ],
       },
     ]);

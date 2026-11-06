@@ -23,6 +23,7 @@ Future<ProviderContainer> pumpPanel(
       '/api/auth/logout': {'message': 'Disconnesso'},
       '/api/groups': <Object>[],
       '/api/users': usersPageJson([]),
+      '/api/cycles/requests': <Object>[],
       ...responses,
     })),
     panelTokenStorageProvider.overrideWithValue(

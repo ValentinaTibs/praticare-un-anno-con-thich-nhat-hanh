@@ -14,6 +14,9 @@ class User {
   /// elsewhere it is null even for a group member.
   final String? groupId;
 
+  /// When the user's group ended. Only the session user has it.
+  final DateTime? groupEndedAt;
+
   const User({
     required this.id,
     required this.name,
@@ -26,6 +29,7 @@ class User {
     this.lastConfirmedAt,
     this.createdAt,
     this.groupId,
+    this.groupEndedAt,
   });
 
   User copyWith({String? status, bool? reviewedByAdmin, DateTime? lastConfirmedAt}) => User(
@@ -40,6 +44,7 @@ class User {
         lastConfirmedAt: lastConfirmedAt ?? this.lastConfirmedAt,
         createdAt: createdAt,
         groupId: groupId,
+        groupEndedAt: groupEndedAt,
       );
 
   bool get isAdmin => role == 'admin' || role == 'super_admin';
@@ -47,6 +52,10 @@ class User {
   bool get isActive => status == 'active';
   bool get isSuspended => status == 'suspended';
   bool get isBanned => status == 'banned';
+
+  /// Not in an active group: the app shows only the waiting screen. Only for
+  /// the session user, whose group is always known.
+  bool get isWaiting => groupId == null || (groupEndedAt != null && !groupEndedAt!.isAfter(DateTime.now()));
 
   String get roleLabel => switch (role) {
         'super_admin' => 'Super Admin',
@@ -79,5 +88,9 @@ class User {
             : null,
         // The admin list sends groupId, /api/users/me the whole group.
         groupId: json['groupId'] as String? ?? (json['group'] as Map<String, dynamic>?)?['id'] as String?,
+        groupEndedAt: switch ((json['group'] as Map<String, dynamic>?)?['endedAt']) {
+          final String date => DateTime.parse(date),
+          _ => null,
+        },
       );
 }

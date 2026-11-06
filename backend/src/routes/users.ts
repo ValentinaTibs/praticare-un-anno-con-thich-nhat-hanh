@@ -5,7 +5,7 @@ import { prisma } from '../config/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
 
-const adminUserSelect = {
+export const adminUserSelect = {
   id: true,
   name: true,
   surname: true,
@@ -25,6 +25,8 @@ const usersQuerySchema = z.object({
   status: z.nativeEnum(UserStatus).optional(),
   reviewed: z.enum(['true', 'false']).optional(),
   groupId: z.string().min(1).optional(),
+  // Active users outside any active group
+  waiting: z.literal('true').optional(),
   // Each word matches name, surname or email, ignoring case
   q: z.string().trim().max(100).optional(),
 });
@@ -63,12 +65,12 @@ export async function userRoutes(app: FastifyInstance) {
     return reply.send(user);
   });
 
-  // Admin: GET /api/users — supports ?page=&limit=&status=&reviewed=&groupId=&q=
+  // Admin: GET /api/users — supports ?page=&limit=&status=&reviewed=&groupId=&waiting=&q=
   app.get(
     '/',
     { preHandler: [authenticate, authorize('admin')] },
     async (request, reply) => {
-      const { page, limit, status, reviewed, groupId, q } = usersQuerySchema.parse(request.query);
+      const { page, limit, status, reviewed, groupId, waiting, q } = usersQuerySchema.parse(request.query);
 
       const where: Prisma.UserWhereInput = {};
       if (status) where.status = status;
@@ -76,6 +78,10 @@ export async function userRoutes(app: FastifyInstance) {
       // Nothing to review in a banned user, unless the banned are what was asked for.
       if (reviewed === 'false' && !status) where.status = { not: UserStatus.banned };
       if (groupId) where.groupId = groupId;
+      if (waiting) {
+        where.status = UserStatus.active;
+        where.OR = [{ groupId: null }, { group: { endedAt: { lte: new Date() } } }];
+      }
       if (q) {
         // Every word has to match somewhere, so that a full name finds its user.
         where.AND = q.split(/\s+/).map((word) => {

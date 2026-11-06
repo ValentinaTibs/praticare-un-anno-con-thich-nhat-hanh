@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { prisma } from '../src/config/prisma.js';
 import { createTestApp, givenAdmin, givenGroup, givenMember, givenUser, loginAs } from './helpers.js';
 
 type App = Awaited<ReturnType<typeof createTestApp>>;
@@ -9,6 +10,22 @@ const listUsers = (app: App, headers: Headers, query: string) =>
 const ids = (res: { json: () => { users: { id: string }[] } }) => res.json().users.map((u) => u.id);
 
 describe('Elenco utenti per gli admin', () => {
+  it('il filtro «in attesa» comprende solo gli utenti attivi fuori da un gruppo attivo', async () => {
+    const app = await createTestApp();
+    const admin = await givenAdmin();
+    const headers = await loginAs(app, admin);
+    const waiting = await givenUser();
+    await givenUser({ status: 'suspended' });
+    await givenMember(await givenGroup());
+    const ended = await givenGroup();
+    await prisma.group.update({ where: { id: ended.id }, data: { endedAt: new Date(Date.now() - 1000) } });
+    const backToWaiting = await givenMember(ended);
+
+    const res = await listUsers(app, headers, 'waiting=true');
+
+    expect(ids(res).sort()).toEqual([admin.id, waiting.id, backToWaiting.id].sort());
+  });
+
   it('il filtro «da revisionare» comprende anche gli utenti senza gruppo', async () => {
     const app = await createTestApp();
     const headers = await loginAs(app, await givenAdmin());

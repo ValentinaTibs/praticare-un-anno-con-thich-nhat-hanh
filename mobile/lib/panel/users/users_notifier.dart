@@ -19,7 +19,10 @@ class UserFilters {
   final String? status;
   final bool onlyToReview;
 
-  const UserFilters({this.search = '', this.groupId, this.status, this.onlyToReview = false});
+  /// Only active users outside any active group.
+  final bool onlyWaiting;
+
+  const UserFilters({this.search = '', this.groupId, this.status, this.onlyToReview = false, this.onlyWaiting = false});
 
   UserFilters copyWith({String? search, Object? groupId = _keep, Object? status = _keep, bool? onlyToReview}) =>
       UserFilters(
@@ -27,6 +30,7 @@ class UserFilters {
         groupId: identical(groupId, _keep) ? this.groupId : groupId as String?,
         status: identical(status, _keep) ? this.status : status as String?,
         onlyToReview: onlyToReview ?? this.onlyToReview,
+        onlyWaiting: onlyWaiting,
       );
 
   Map<String, dynamic> toQuery(int page) => {
@@ -36,6 +40,7 @@ class UserFilters {
         if (groupId != null) 'groupId': groupId,
         if (status != null) 'status': status,
         if (onlyToReview) 'reviewed': 'false',
+        if (onlyWaiting) 'waiting': 'true',
       };
 }
 
@@ -71,9 +76,9 @@ class UsersNotifier extends StateNotifier<UsersState> {
   /// faster than the backend answers.
   int _latestRequest = 0;
 
-  UsersNotifier(this._api, {void Function()? onUsersChanged})
+  UsersNotifier(this._api, {void Function()? onUsersChanged, UserFilters filters = const UserFilters()})
       : _onUsersChanged = onUsersChanged ?? (() {}),
-        super(const UsersState(loading: true)) {
+        super(UsersState(filters: filters, loading: true)) {
     load();
   }
 

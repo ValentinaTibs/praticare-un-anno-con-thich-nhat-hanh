@@ -166,7 +166,7 @@ class _UsersTabState extends ConsumerState<UsersTab> {
         const SizedBox(height: 8),
         SizedBox(height: 4, child: state.loading && state.users.isNotEmpty ? const LinearProgressIndicator() : null),
         Expanded(child: _body(state, groupsById)),
-        if (state.pageCount > 1 && state.error == null) _Pagination(state: state, onPage: notifier.goToPage),
+        if (state.pageCount > 1 && state.error == null) UsersPagination(state: state, onPage: notifier.goToPage),
       ],
     );
   }
@@ -255,7 +255,7 @@ class _UsersTableState extends State<_UsersTable> {
                           u.statusLabel,
                           style: u.isActive ? null : TextStyle(color: theme.colorScheme.error),
                         )),
-                        DataCell(u.reviewedByAdmin ? const Text('Revisionato') : const _ToReviewBadge()),
+                        DataCell(u.reviewedByAdmin ? const Text('Revisionato') : const ToReviewBadge()),
                       ],
                     ),
                 ],
@@ -292,8 +292,9 @@ class _CutText extends StatelessWidget {
       );
 }
 
-class _ToReviewBadge extends StatelessWidget {
-  const _ToReviewBadge();
+/// Marks a user who still needs a review.
+class ToReviewBadge extends StatelessWidget {
+  const ToReviewBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -308,17 +309,18 @@ class _ToReviewBadge extends StatelessWidget {
   }
 }
 
-class _Pagination extends StatefulWidget {
+/// Previous and next page of a users list.
+class UsersPagination extends StatefulWidget {
   final UsersState state;
   final void Function(int page) onPage;
 
-  const _Pagination({required this.state, required this.onPage});
+  const UsersPagination({super.key, required this.state, required this.onPage});
 
   @override
-  State<_Pagination> createState() => _PaginationState();
+  State<UsersPagination> createState() => UsersPaginationState();
 }
 
-class _PaginationState extends State<_Pagination> {
+class UsersPaginationState extends State<UsersPagination> {
   final _previous = FocusNode();
   final _next = FocusNode();
 
@@ -327,7 +329,7 @@ class _PaginationState extends State<_Pagination> {
   bool get _hasNext => _page < widget.state.pageCount;
 
   @override
-  void didUpdateWidget(_Pagination oldWidget) {
+  void didUpdateWidget(UsersPagination oldWidget) {
     super.didUpdateWidget(oldWidget);
     // A disabled button loses the focus, which would land in the middle of the
     // table: it moves to the other button once this one is enabled.

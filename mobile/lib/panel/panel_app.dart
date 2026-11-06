@@ -9,6 +9,7 @@ import 'cycles/cycles_page.dart';
 import 'sections.dart';
 import 'shell/panel_shell.dart';
 import 'users/users_page.dart';
+import 'waiting/waiting_page.dart';
 
 const _loginPath = '/accesso';
 const _title = 'Pannello di amministrazione';
@@ -21,6 +22,7 @@ final _theme = ThemeData(
 /// Sections whose page is ready; the others show a placeholder.
 const _sectionPages = <String, Widget>{
   '/utenti': UsersPage(),
+  '/in-attesa': WaitingPage(),
   '/cicli': CyclesPage(),
 };
 

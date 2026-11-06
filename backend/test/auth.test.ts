@@ -3,6 +3,8 @@ import {
   createTestApp,
   givenUser,
   givenAdmin,
+  givenGroup,
+  givenMember,
   givenOpenCycle,
   givenBannedEmail,
   firebaseTokenFor,
@@ -30,6 +32,20 @@ function register(app: App, email: string, idToken = firebaseTokenFor(email)) {
 }
 
 describe('POST /api/auth/verify-firebase', () => {
+  it('l\'accesso dice il gruppo dell\'utente, come /api/users/me', async () => {
+    const app = await createTestApp();
+    const group = await givenGroup();
+    const member = await givenMember(group);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/verify-firebase',
+      payload: { idToken: firebaseTokenFor(member.email) },
+    });
+
+    expect(res.json().user.group).toMatchObject({ id: group.id, endedAt: null });
+  });
+
   it('un utente attivo ottiene un token e legge il proprio profilo', async () => {
     const app = await createTestApp();
     await givenUser({ email: 'anna@test.local', name: 'Anna' });

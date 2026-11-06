@@ -1,12 +1,11 @@
 import 'package:community_app/app.dart';
 import 'package:community_app/core/api/api_client.dart';
-import 'package:community_app/core/services/push_service.dart';
-import 'package:community_app/core/services/socket_service.dart';
 import 'package:community_app/features/auth/auth_notifier.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../panel/fakes.dart';
+import 'app_fakes.dart';
 
 const _refresh = '/api/auth/refresh';
 const _logout = '/api/auth/logout';
@@ -16,28 +15,6 @@ const _unauthorized = (401, {'message': 'Non autorizzato'});
 const _suspended = (403, {'message': 'Account sospeso. Contatta un amministratore per riattivarlo.'});
 
 Never _serverDown(RequestOptions o) => throw DioException.connectionError(requestOptions: o, reason: 'giù');
-
-class FakeSocket extends Fake implements SocketService {
-  final List<String> connected = [];
-  int disconnected = 0;
-
-  @override
-  void connect(String accessToken) => connected.add(accessToken);
-
-  @override
-  void disconnect() => disconnected++;
-}
-
-class FakePush extends Fake implements PushService {
-  Future<void> Function()? onInit;
-  Future<void> Function()? onUnregister;
-
-  @override
-  Future<void> init() async => onInit?.call();
-
-  @override
-  Future<void> unregisterToken() async => onUnregister?.call();
-}
 
 void main() {
   setUpAll(initItalianLocale);

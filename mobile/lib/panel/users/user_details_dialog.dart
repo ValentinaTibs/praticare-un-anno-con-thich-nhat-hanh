@@ -18,7 +18,11 @@ class UserDetailsDialog extends ConsumerStatefulWidget {
   final User user;
   final String groupLabel;
 
-  const UserDetailsDialog({super.key, required this.user, required this.groupLabel});
+  /// Runs an action and reloads the list behind the card. Throws on failure.
+  /// By default, that of the "Utenti" tab.
+  final Future<void> Function(UserAction action, User user)? act;
+
+  const UserDetailsDialog({super.key, required this.user, required this.groupLabel, this.act});
 
   @override
   ConsumerState<UserDetailsDialog> createState() => _UserDetailsDialogState();
@@ -50,7 +54,7 @@ class _UserDetailsDialogState extends ConsumerState<UserDetailsDialog> {
       _done = null;
     });
     try {
-      await ref.read(usersProvider.notifier).act(action, _user);
+      await (widget.act ?? ref.read(usersProvider.notifier).act)(action, _user);
       // The card may have been dismissed meanwhile: then there is nothing to update.
       if (!mounted || action == UserAction.remove) {
         messenger.showSnackBar(SnackBar(content: Text(action.done)));

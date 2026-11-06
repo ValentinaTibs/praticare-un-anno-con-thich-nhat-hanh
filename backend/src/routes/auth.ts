@@ -17,6 +17,7 @@ const registerBody = z.object({
 });
 const refreshBody = z.object({ refreshToken: z.string() });
 const deviceBody = z.object({ fcmToken: z.string() });
+const withGroup = { group: { select: { id: true, startedAt: true, endedAt: true } } } as const;
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /api/auth/dev-login — development only, skips Firebase entirely
@@ -31,7 +32,7 @@ export async function authRoutes(app: FastifyInstance) {
         return reply.status(403).send({ message: 'Email bannata in modo permanente.', contact: env.ADMIN_CONTACT_EMAIL });
       }
 
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await prisma.user.findUnique({ where: { email }, include: withGroup });
       if (!user) return reply.send({ status: 'register', email });
 
       if (user.status === 'banned') {
@@ -61,7 +62,7 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email }, include: withGroup });
 
     if (!user) return reply.status(200).send({ status: 'register', email });
 
@@ -193,7 +194,15 @@ async function issueTokens(app: FastifyInstance, userId: string, role: string) {
   return { accessToken, refreshToken };
 }
 
-function safeUser(user: { id: string; email: string; name: string; surname: string; role: string; status: string }) {
+function safeUser(user: {
+  id: string;
+  email: string;
+  name: string;
+  surname: string;
+  role: string;
+  status: string;
+  group?: { id: string; startedAt: Date; endedAt: Date | null } | null;
+}) {
   return {
     id: user.id,
     email: user.email,
@@ -201,5 +210,7 @@ function safeUser(user: { id: string; email: string; name: string; surname: stri
     surname: user.surname,
     role: user.role,
     status: user.status,
+    // The app tells waiting users from group members with it, as with /api/users/me.
+    group: user.group ?? null,
   };
 }
