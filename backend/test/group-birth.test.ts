@@ -111,4 +111,60 @@ describe('Nascita del gruppo', () => {
 
     expect(await groups(app)).toEqual([]);
   });
+
+  it('il richiedente non revisionato resta in attesa e la sua richiesta decade', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle();
+    await givenRequester(cycle);
+    const notReviewed = await givenRequester(cycle, { reviewedByAdmin: false });
+
+    await startDueGroups();
+
+    expect(await groups(app)).toMatchObject([{ cycleId: cycle.id, memberCount: 1 }]);
+    const res = await app.inject({ method: 'GET', url: '/api/cycles/next', headers: await loginAs(app, notReviewed) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ requested: false });
+  });
+
+  it('il Super Admin vede i partecipanti del percorso iniziato al posto dei richiedenti', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle();
+    await givenRequester(cycle);
+    await givenRequester(cycle);
+    await givenRequester(cycle, { reviewedByAdmin: false });
+    const headers = await loginAs(app, await givenAdmin({ role: 'super_admin' }));
+
+    await startDueGroups();
+
+    const res = await app.inject({ method: 'GET', url: '/api/cycles', headers });
+    expect(res.json()).toMatchObject([{ id: cycle.id, participants: 2, requesters: 0 }]);
+  });
+
+  it('una revisione arrivata dopo la data di inizio non fa nascere un gruppo in ritardo', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle();
+    const late = await givenRequester(cycle, { reviewedByAdmin: false });
+    const admin = await loginAs(app, await givenAdmin());
+
+    await startDueGroups();
+    await app.inject({ method: 'PATCH', url: `/api/admin/${late.id}/review`, headers: admin });
+    await startDueGroups();
+
+    expect((await app.inject({ method: 'GET', url: '/api/groups', headers: admin })).json()).toEqual([]);
+  });
+
+  it('una revisione arrivata dopo la nascita non aggiunge nessuno al gruppo', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle();
+    await givenRequester(cycle);
+    const late = await givenRequester(cycle, { reviewedByAdmin: false });
+    const admin = await loginAs(app, await givenAdmin());
+
+    await startDueGroups();
+    await app.inject({ method: 'PATCH', url: `/api/admin/${late.id}/review`, headers: admin });
+    await startDueGroups();
+
+    const res = await app.inject({ method: 'GET', url: '/api/groups', headers: admin });
+    expect(res.json()).toMatchObject([{ cycleId: cycle.id, memberCount: 1 }]);
+  });
 });

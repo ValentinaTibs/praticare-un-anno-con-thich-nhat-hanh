@@ -22,7 +22,7 @@ export async function closeExpiredCycles() {
 // Brings to life the groups of cycles whose journey has started.
 export async function startDueGroups() {
   const cycles = await prisma.registrationCycle.findMany({
-    where: { startsAt: { lte: new Date() }, group: null },
+    where: { startsAt: { lte: new Date() }, group: null, participationRequests: { some: {} } },
     include: {
       participationRequests: {
         where: { user: { status: 'active', reviewedByAdmin: true } },
@@ -33,9 +33,12 @@ export async function startDueGroups() {
 
   for (const cycle of cycles) {
     const memberIds = cycle.participationRequests.map(({ userId }) => userId);
-    if (memberIds.length === 0) continue;
 
     await prisma.$transaction(async (tx) => {
+      // Every request lapses here, so a review arriving later can't bring a group to life.
+      await tx.participationRequest.deleteMany({ where: { cycleId: cycle.id } });
+      if (memberIds.length === 0) return;
+
       await tx.group.create({
         data: {
           cycleId: cycle.id,
