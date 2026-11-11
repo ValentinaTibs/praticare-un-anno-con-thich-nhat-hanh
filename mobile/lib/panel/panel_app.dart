@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/widgets/session_unavailable.dart';
 import 'auth/login_page.dart';
 import 'auth/panel_auth_notifier.dart';
+import 'circle/circle_page.dart';
 import 'cycles/cycles_page.dart';
 import 'sections.dart';
 import 'shell/panel_shell.dart';
@@ -23,6 +24,7 @@ final _theme = ThemeData(
 const _sectionPages = <String, Widget>{
   '/utenti': UsersPage(),
   '/in-attesa': WaitingPage(),
+  '/cerchio': CirclePage(),
   '/cicli': CyclesPage(),
 };
 

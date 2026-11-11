@@ -75,7 +75,7 @@ export async function givenBannedEmail(email: string) {
   return prisma.bannedEmail.create({ data: { email } });
 }
 
-// Opens the group's sharing channel directly: the spec allows only scheduled opening, which doesn't exist yet.
+// Opens the group's sharing channel directly, without going through the weekly schedule.
 export async function givenOpenSharingChannel(
   group: { id: string },
   scheduledClosedAt = new Date(Date.now() + 60 * 60 * 1000),

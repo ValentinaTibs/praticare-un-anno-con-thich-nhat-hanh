@@ -10,6 +10,34 @@ export function addMinutes(date: Date, minutes: number): Date {
 
 const ROME_OFFSET = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Rome', timeZoneName: 'longOffset' });
 
+function romeOffsetMinutes(instant: Date) {
+  const offset = ROME_OFFSET.formatToParts(instant).find((part) => part.type === 'timeZoneName')!.value;
+  const match = /GMT([+-])(\d{2}):(\d{2})/.exec(offset);
+  if (!match) return 0; // "GMT" alone means UTC+0
+  const [, sign, hours, minutes] = match;
+  return (sign === '+' ? 1 : -1) * (Number(hours) * 60 + Number(minutes));
+}
+
+const ROME_CALENDAR = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Rome',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+// The YYYY-MM-DD calendar date in Italy at this instant.
+export function calendarDateInRome(instant: Date): string {
+  return ROME_CALENDAR.format(instant);
+}
+
+// The instant when clocks in Italy show this HH:MM on a YYYY-MM-DD calendar date.
+// A time skipped when clocks go forward falls one hour later.
+export function wallTimeInRome(date: string, time: string): Date {
+  const asUtc = new Date(`${date}T${time}:00.000Z`);
+  const guess = addMinutes(asUtc, -romeOffsetMinutes(asUtc));
+  return addMinutes(asUtc, -romeOffsetMinutes(guess));
+}
+
 // The instant of 00:00 in Italy on a YYYY-MM-DD calendar date, or null if no such date exists.
 export function startOfDayInRome(date: string): Date | null {
   const utcMidnight = new Date(`${date}T00:00:00.000Z`);

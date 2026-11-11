@@ -103,56 +103,14 @@ describe('Cerchio per gruppo', () => {
     expect(posts.json()).toEqual([]);
   });
 
-  it('un admin apre il cerchio di un gruppo scelto e può entrarci', async () => {
+  it('un admin entra nel cerchio di un gruppo scelto', async () => {
     const app = await createTestApp();
     const group = await givenGroup();
+    await givenOpenSharingChannel(group);
     const admin = await loginAs(app, await givenAdmin());
-    const member = await loginAs(app, await givenMember(group));
-
-    const opened = await app.inject({
-      method: 'POST',
-      url: `/api/sharing-channel/open?groupId=${group.id}`,
-      headers: admin,
-      payload: { scheduledClosedAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
-    });
-    expect(opened.statusCode).toBe(201);
-    expect(opened.json()).toMatchObject({ groupId: group.id });
-
-    const status = await app.inject({ method: 'GET', url: '/api/sharing-channel/status', headers: member });
-    expect(status.json()).toMatchObject({ status: 'open' });
 
     const join = await app.inject({ method: 'POST', url: `/api/sharing-channel/join?groupId=${group.id}`, headers: admin });
+
     expect(join.statusCode).toBe(200);
-  });
-
-  it('un admin senza gruppo deve indicare il gruppo per aprire un cerchio', async () => {
-    const app = await createTestApp();
-    const admin = await loginAs(app, await givenAdmin());
-
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/sharing-channel/open',
-      headers: admin,
-      payload: { scheduledClosedAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
-    });
-
-    expect(res.statusCode).toBe(400);
-  });
-
-  it('gruppi diversi possono avere il cerchio aperto insieme', async () => {
-    const app = await createTestApp();
-    const first = await givenGroup();
-    const second = await givenGroup();
-    await givenOpenSharingChannel(first);
-    const admin = await loginAs(app, await givenAdmin());
-
-    const res = await app.inject({
-      method: 'POST',
-      url: `/api/sharing-channel/open?groupId=${second.id}`,
-      headers: admin,
-      payload: { scheduledClosedAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
-    });
-
-    expect(res.statusCode).toBe(201);
   });
 });

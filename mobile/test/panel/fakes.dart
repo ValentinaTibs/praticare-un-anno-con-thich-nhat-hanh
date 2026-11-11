@@ -61,7 +61,7 @@ class FakeApiClient implements ApiClient {
   final Map<String, Object> responses;
   final List<String> calls = [];
 
-  /// The data sent by each POST and PATCH, in order.
+  /// The data sent by each POST, PUT and PATCH, in order.
   final List<dynamic> bodies = [];
 
   FakeApiClient(this.responses);
@@ -85,6 +85,12 @@ class FakeApiClient implements ApiClient {
   Future<dynamic> post(String path, {dynamic data}) async {
     bodies.add(data);
     return _answer('POST', path);
+  }
+
+  @override
+  Future<dynamic> put(String path, {dynamic data}) async {
+    bodies.add(data);
+    return _answer('PUT', path);
   }
 
   @override

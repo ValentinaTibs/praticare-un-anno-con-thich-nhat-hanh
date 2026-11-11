@@ -3,16 +3,20 @@ import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-import { pushToGroup, pushToChannelMembers } from '../services/push.service.js';
+import { pushToChannelMembers } from '../services/push.service.js';
 
 const postBody = z.object({
   content: z.string().min(1),
   mediaUrl: z.string().url().optional(),
 });
 
-const openBody = z.object({
-  scheduledClosedAt: z.string().datetime(),
+const scheduleBody = z.object({
+  dayOfWeek: z.number().int().min(1).max(7),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  durationMinutes: z.number().int().positive(),
 });
+
+const scheduleFields = { dayOfWeek: true, startTime: true, durationMinutes: true } as const;
 
 const ROLES_ACROSS_GROUPS = ['admin', 'super_admin'];
 
@@ -31,6 +35,26 @@ function findOpenChannel(request: FastifyRequest) {
 }
 
 export async function sharingChannelRoutes(app: FastifyInstance) {
+  // GET /api/sharing-channel/schedule — admin only
+  app.get('/schedule', { preHandler: [authenticate, authorize('admin')] }, async (_request, reply) => {
+    const schedule = await prisma.sharingChannelSchedule.findUnique({ where: { id: 1 }, select: scheduleFields });
+    if (!schedule) return reply.status(404).send({ message: 'Il cerchio non ha ancora una programmazione' });
+    return reply.send(schedule);
+  });
+
+  // PUT /api/sharing-channel/schedule — admin only
+  app.put('/schedule', { preHandler: [authenticate, authorize('admin')] }, async (request, reply) => {
+    // Set here rather than by Prisma: the change counts from the next appointment after it.
+    const data = { ...scheduleBody.parse(request.body), updatedAt: new Date() };
+    const schedule = await prisma.sharingChannelSchedule.upsert({
+      where: { id: 1 },
+      create: data,
+      update: data,
+      select: scheduleFields,
+    });
+    return reply.send(schedule);
+  });
+
   // GET /api/sharing-channel/status
   app.get('/status', { preHandler: authenticate }, async (request, reply) => {
     const channel = await findOpenChannel(request);
@@ -169,51 +193,45 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
     },
   );
 
-  // POST /api/sharing-channel/open — admin only
-  app.post(
-    '/open',
-    { preHandler: [authenticate, authorize('admin')] },
-    async (request, reply) => {
-      const { scheduledClosedAt } = openBody.parse(request.body);
+  // GET /api/sharing-channel/channels — admin only, the open channels of every group
+  app.get('/channels', { preHandler: [authenticate, authorize('admin')] }, async (_request, reply) => {
+    const channels = await prisma.sharingChannel.findMany({
+      where: { status: 'open' },
+      orderBy: { openedAt: 'asc' },
+      select: {
+        id: true,
+        openedAt: true,
+        scheduledClosedAt: true,
+        group: { select: { id: true, startedAt: true } },
+        _count: { select: { members: true, posts: true } },
+      },
+    });
 
-      const groupId = groupIdFor(request);
-      if (!groupId) return reply.status(400).send({ message: 'Scegli un gruppo con ?groupId=' });
+    return reply.send(
+      channels.map(({ _count, ...channel }) => ({ ...channel, memberCount: _count.members, postCount: _count.posts })),
+    );
+  });
 
-      const existing = await findOpenChannel(request);
-      if (existing) return reply.status(409).send({ message: 'Il canale di condivisione è già aperto' });
+  // GET /api/sharing-channel/channels/:id — admin only, members and messages without joining
+  app.get('/channels/:id', { preHandler: [authenticate, authorize('admin')] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const author = { select: { id: true, name: true, surname: true } };
 
-      const channel = await prisma.sharingChannel.create({
-        data: {
-          groupId,
-          status: 'open',
-          openedBy: request.user.id,
-          openedAt: new Date(),
-          scheduledClosedAt: new Date(scheduledClosedAt),
-        },
-      });
+    const channel = await prisma.sharingChannel.findFirst({
+      where: { id, status: 'open' },
+      select: {
+        id: true,
+        openedAt: true,
+        scheduledClosedAt: true,
+        group: { select: { id: true, startedAt: true } },
+        members: { orderBy: { joinedAt: 'asc' }, select: { joinedAt: true, user: author } },
+        posts: { orderBy: { createdAt: 'asc' }, select: { id: true, content: true, createdAt: true, author } },
+      },
+    });
+    if (!channel) return reply.status(404).send({ message: 'Il cerchio non è aperto' });
 
-      await pushToGroup(groupId, 'Canale di condivisione aperto', 'Tocca per entrare nella sessione di condivisione', {
-        type: 'sharing_channel:opened',
-        channelId: channel.id,
-      });
-
-      return reply.status(201).send(channel);
-    },
-  );
-
-  // POST /api/sharing-channel/close — admin only (manual early close)
-  app.post(
-    '/close',
-    { preHandler: [authenticate, authorize('admin')] },
-    async (request, reply) => {
-      const channel = await findOpenChannel(request);
-      if (!channel) return reply.status(404).send({ message: 'Nessun canale di condivisione aperto' });
-
-      await closeChannel(channel.id);
-
-      return reply.send({ message: 'Canale di condivisione chiuso' });
-    },
-  );
+    return reply.send(channel);
+  });
 
   // GET /api/sharing-channel/members — admin only
   app.get(
@@ -231,19 +249,4 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
       return reply.send(members);
     },
   );
-}
-
-export async function closeChannel(channelId: string) {
-  await pushToChannelMembers(channelId, 'Canale di condivisione chiuso', 'La sessione è terminata', {
-    type: 'sharing_channel:closed',
-    channelId,
-  });
-
-  await prisma.sharingChannel.update({
-    where: { id: channelId },
-    data: { status: 'closed', closedAt: new Date() },
-  });
-
-  await prisma.sharingChannelPost.deleteMany({ where: { sharingChannelId: channelId } });
-  await prisma.sharingChannelMember.deleteMany({ where: { sharingChannelId: channelId } });
 }

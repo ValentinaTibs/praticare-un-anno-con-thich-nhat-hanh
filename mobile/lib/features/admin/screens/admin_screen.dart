@@ -217,52 +217,12 @@ class _UserTile extends StatelessWidget {
 
 // ── Sharing tab ───────────────────────────────────────────────────────────────
 
-class _SharingTab extends ConsumerStatefulWidget {
+// The channel opens and closes by itself following the weekly schedule, so this tab only shows its state.
+class _SharingTab extends ConsumerWidget {
   const _SharingTab();
 
   @override
-  ConsumerState<_SharingTab> createState() => _SharingTabState();
-}
-
-class _SharingTabState extends ConsumerState<_SharingTab> {
-  DateTime? _selectedClose;
-
-  Future<void> _pickCloseTime() async {
-    final now = DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 7)),
-    );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (time == null) return;
-    setState(() {
-      _selectedClose = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    });
-  }
-
-  Future<void> _open() async {
-    if (_selectedClose == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Prima scegli l\'orario di chiusura')));
-      return;
-    }
-    final api = ref.read(apiClientProvider);
-    await api.post('/api/sharing-channel/open', data: {
-      'scheduledClosedAt': _selectedClose!.toUtc().toIso8601String(),
-    });
-    ref.invalidate(_sharingStatusProvider);
-  }
-
-  Future<void> _close() async {
-    final api = ref.read(apiClientProvider);
-    await api.post('/api/sharing-channel/close');
-    ref.invalidate(_sharingStatusProvider);
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final statusAsync = ref.watch(_sharingStatusProvider);
 
     return statusAsync.when(
@@ -286,30 +246,7 @@ class _SharingTabState extends ConsumerState<_SharingTab> {
                 Text('Chiusura prevista: ${DateFormat('d MMM HH:mm').format(DateTime.parse(status['scheduledClosedAt'] as String).toLocal())}'),
               ],
               const Divider(height: 40),
-              if (!isOpen) ...[
-                Text('Apri una nuova sessione', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _pickCloseTime,
-                  icon: const Icon(Icons.schedule),
-                  label: Text(_selectedClose != null
-                      ? 'Chiude: ${DateFormat('d MMM HH:mm').format(_selectedClose!)}'
-                      : 'Imposta l\'orario di chiusura'),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _open,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Apri il canale di condivisione'),
-                ),
-              ] else ...[
-                FilledButton.icon(
-                  onPressed: _close,
-                  icon: const Icon(Icons.stop),
-                  label: const Text('Chiudi ora'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                ),
-              ],
+              const Text('Il cerchio si apre e si chiude da solo, secondo la programmazione settimanale impostata dal pannello web.'),
             ],
           ),
         );

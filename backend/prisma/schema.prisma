@@ -110,13 +110,28 @@ model SharingChannel {
   openedAt          DateTime?            @map("opened_at")
   scheduledClosedAt DateTime?            @map("scheduled_closed_at")
   closedAt          DateTime?            @map("closed_at")
+  closingWarningAt  DateTime?            @map("closing_warning_at")
 
   group   Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
   opener  User?                  @relation(fields: [openedBy], references: [id])
   members SharingChannelMember[]
   posts   SharingChannelPost[]
 
+  @@unique([groupId, openedAt])
   @@map("sharing_channel")
+}
+
+// The single weekly appointment shared by every group's sharing channel, in
+// Italian time. Only appointments starting after updatedAt count, so a change
+// never opens a channel late.
+model SharingChannelSchedule {
+  id              Int      @id @default(1)
+  dayOfWeek       Int      @map("day_of_week") // ISO: 1 = Monday … 7 = Sunday
+  startTime       String   @map("start_time") // HH:MM
+  durationMinutes Int      @map("duration_minutes")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("sharing_channel_schedule")
 }
 
 model SharingChannelMember {

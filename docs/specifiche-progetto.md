@@ -352,22 +352,19 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
 - **Già allineato:** i round di conferma escludono già admin e Super Admin.
 - **Nascita del gruppo:** il codice gestisce date e durata del ciclo e la loro modifica fino all'inizio, e il gruppo non nasce più all'apertura. Manca ancora la nascita del gruppo alla data di inizio (#92): finché non c'è, un nuovo ciclo non crea nessun gruppo.
-- **Programmazione ricorrente del cerchio:** il codice prevede solo l'apertura manuale da parte di un admin. Le specifiche chiedono un appuntamento settimanale con giorno, ora di inizio e durata, uguale per tutti i gruppi.
-- **Moderazione del cerchio:** il backend permette a un admin di scegliere il gruppo con `?groupId=` e di vederne i membri, ma per leggere i messaggi deve entrare nel cerchio. Non c'è un elenco dei cerchi aperti di tutti i gruppi. Per il pannello servono questo elenco e, per ogni cerchio, i messaggi senza entrarci.
-- **Avviso di chiusura del cerchio:** il codice lo manda a tutti i membri del gruppo. Le specifiche lo mandano solo a chi è nel cerchio.
-- **Già allineato:** la cancellazione dei messaggi alla chiusura del cerchio è già implementata.
+- **Già allineato:** il backend apre e chiude da solo il cerchio di ogni gruppo attivo secondo l'unico appuntamento settimanale, in ora italiana. Una modifica della programmazione vale dal primo appuntamento che inizia dopo la modifica, e un cerchio aperto finisce all'orario previsto. Non esistono più l'apertura manuale né la chiusura anticipata.
+- **Già allineato:** l'avviso di chiusura imminente arriva solo a chi è nel cerchio, una volta sola, e la cancellazione dei messaggi alla chiusura è già implementata.
+- **Già allineato:** nella sezione Cerchio del pannello gli admin impostano la programmazione e moderano i cerchi aperti di tutti i gruppi: membri e messaggi aggiornati ogni 10 secondi o con «Aggiorna», e «Cancella» su ogni messaggio. La scheda del cerchio nell'app mobile mostra solo lo stato.
 - **Lingua delle notifiche:** i testi delle notifiche nel codice sono in inglese.
 - **Contenuti del cerchio:** il codice accetta anche un link a media nei messaggi. Le specifiche chiedono solo testo.
-- **Apertura manuale del cerchio:** il codice permette a un admin di aprire il cerchio quando vuole. Le specifiche escludono i cerchi fuori programma.
 - **Storico al rientro nel cerchio:** il codice restituisce tutti i messaggi a chi rientra. Le specifiche chiedono solo quelli successivi al rientro.
 - **Numero di partecipanti:** il codice mostra l'elenco membri solo agli admin e non espone il conteggio agli utenti.
 - **Cancellazione account:** non esiste una funzione per cancellare il proprio account.
 - **Account Firebase alla rimozione:** la rimozione da parte di un admin elimina l'utente dal database ma lascia il suo account di accesso in Firebase.
 - **Informativa privacy:** la registrazione non chiede di accettarla.
-- **Chiusura anticipata del cerchio:** il codice permette a un admin di chiudere il cerchio in anticipo. Le specifiche lo escludono.
-- **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio. La push di apertura parte già, ma con il testo «Canale di condivisione aperto».
+- **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio (#16). La push «Il cerchio è aperto» parte già.
 - **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Manca la motivazione.
-- **Pannello web di amministrazione:** esistono la struttura, l'accesso e la sezione Utenti e gruppi, con gruppi e membri, ricerca, filtro dei non revisionati, motivazione, revisione, sospensione, riattivazione, ban, revoca del ban e rimozione. Le altre sezioni sono ancora vuote. Le schermate admin attuali sono ancora nell'app mobile (#27).
+- **Pannello web di amministrazione:** esistono la struttura, l'accesso e le sezioni Utenti e gruppi, In attesa, Cicli e Cerchio. Utenti e gruppi ha gruppi e membri, ricerca, filtro dei non revisionati, motivazione, revisione, sospensione, riattivazione, ban, revoca del ban e rimozione. Le altre sezioni sono ancora vuote. Le schermate admin attuali sono ancora nell'app mobile (#27).
 - **Già allineato:** le regole su chi può intervenire su chi (sezione 6.1) sono già implementate nel backend e nel pannello.
 - **Già allineato:** l'accesso usa email e password tramite Firebase, con email verificata obbligatoria, sia nel backend sia nell'app. Il modello utente ha il campo email e non ha più il numero di telefono.
 - **Già allineato:** l'accesso al pannello web usa email e password tramite Firebase ed è riservato ad admin e Super Admin. Le voci del Super Admin si vedono solo con quel ruolo.
