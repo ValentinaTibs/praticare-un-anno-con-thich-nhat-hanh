@@ -251,4 +251,46 @@ describe('Nascita del gruppo', () => {
 
     expect(await prisma.removedRequester.findMany()).toEqual([{ cycleId: later.id, email: 'rimosso-dopo@test.local' }]);
   });
+
+  it('se il server riparte quando il percorso è già finito il gruppo non nasce e le richieste decadono', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle(daysAgo(10));
+    await prisma.registrationCycle.update({ where: { id: cycle.id }, data: { durationDays: 7 } });
+    const requester = await givenRequester(cycle);
+
+    await startDueGroups();
+
+    expect(await groups(app)).toEqual([]);
+    const next = await app.inject({ method: 'GET', url: '/api/cycles/next', headers: await loginAs(app, requester) });
+    expect(next.json()).toMatchObject({ requested: false });
+  });
+
+  it('un errore su un ciclo non ferma la nascita degli altri gruppi, e al controllo successivo si recupera', async () => {
+    const app = await createTestApp();
+    const failing = await givenDueCycle(minutesAgo(2));
+    const other = await givenDueCycle();
+    await givenRequester(failing);
+    await givenRequester(other);
+    // A real database failure on one cycle only, not a duplicate group.
+    await prisma.$executeRawUnsafe(`
+      CREATE FUNCTION fail_group_insert() RETURNS trigger AS $$
+      BEGIN RAISE EXCEPTION 'test failure'; END $$ LANGUAGE plpgsql`);
+    await prisma.$executeRawUnsafe(`
+      CREATE TRIGGER fail_group_insert BEFORE INSERT ON groups FOR EACH ROW
+      WHEN (NEW.cycle_id = '${failing.id}') EXECUTE FUNCTION fail_group_insert()`);
+
+    try {
+      await expect(startDueGroups()).rejects.toThrow();
+      expect(await groups(app)).toMatchObject([{ cycleId: other.id, memberCount: 1 }]);
+    } finally {
+      await prisma.$executeRawUnsafe('DROP TRIGGER fail_group_insert ON groups');
+      await prisma.$executeRawUnsafe('DROP FUNCTION fail_group_insert');
+    }
+
+    await startDueGroups();
+
+    expect((await groups(app)).map(({ cycleId }: { cycleId: string }) => cycleId).sort()).toEqual(
+      [failing.id, other.id].sort(),
+    );
+  });
 });
