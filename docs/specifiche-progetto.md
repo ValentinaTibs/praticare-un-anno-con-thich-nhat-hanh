@@ -81,7 +81,7 @@
 - Per entrare nel gruppo serve la **revisione** di un admin: legge la motivazione e segna l'utente come revisionato. La revisione vale una volta sola: chi è già stato revisionato, ad esempio in un percorso precedente, non va revisionato di nuovo.
 - Gli admin vedono l'elenco dei richiedenti con la loro motivazione, distinguendo chi è da revisionare. Chi non va accolto si rimuove o si banna, come sempre.
 - Chi alla data di inizio non è ancora stato revisionato **non entra nel gruppo**: resta in attesa e la sua richiesta decade.
-- Chi viene **rimosso** da un admin mentre ha una richiesta in corso **non può chiedere di nuovo** di partecipare nello stesso ciclo, anche se si registra di nuovo con la stessa email. Potrà farlo dal ciclo successivo.
+- Chi viene **rimosso** da un admin mentre ha una richiesta in corso **non può chiedere di nuovo** di partecipare nello stesso ciclo, anche se si registra di nuovo con la stessa email. Potrà farlo dal ciclo successivo. Per questo la sua email resta registrata, solo fino alla data di inizio: quando il percorso comincia viene cancellata.
 - L'utente può **annullare** la richiesta fino alla data di inizio, e rifarla finché il ciclo è aperto.
 - Gli utenti in attesa vedono in app **quante persone** hanno chiesto di partecipare al prossimo percorso. Il numero si aggiorna, ma non parte una notifica a ogni nuova richiesta.
 - Si partecipa a **un percorso alla volta**: chi è in un gruppo attivo non può chiedere di partecipare al successivo. Chi ha già una richiesta in corso per un percorso non ancora iniziato deve annullarla prima di chiedere di partecipare a un altro.

@@ -234,4 +234,21 @@ describe('Nascita del gruppo', () => {
     expect(runs.map(({ status }) => status)).toEqual(['fulfilled', 'fulfilled', 'fulfilled']);
     expect(await groups(app)).toMatchObject([{ cycleId: cycle.id, memberCount: 2 }]);
   });
+
+  it('alla data di inizio le email dei rimossi vengono cancellate, anche senza altre richieste', async () => {
+    const app = await createTestApp();
+    const cycle = await givenDueCycle(new Date(Date.now() + 60 * 1000));
+    const later = await givenDueCycle(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    const removed = await givenRequester(cycle, { email: 'rimosso@test.local' });
+    const removedLater = await givenRequester(later, { email: 'rimosso-dopo@test.local' });
+    const headers = await loginAs(app, await givenAdmin());
+    for (const user of [removed, removedLater]) {
+      expect((await app.inject({ method: 'DELETE', url: `/api/admin/${user.id}`, headers })).statusCode).toBe(204);
+    }
+    await prisma.registrationCycle.update({ where: { id: cycle.id }, data: { startsAt: minutesAgo(1) } });
+
+    await startDueGroups();
+
+    expect(await prisma.removedRequester.findMany()).toEqual([{ cycleId: later.id, email: 'rimosso-dopo@test.local' }]);
+  });
 });

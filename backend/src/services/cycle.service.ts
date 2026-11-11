@@ -25,7 +25,11 @@ export async function closeExpiredCycles() {
 export async function startDueGroups() {
   const now = new Date();
   const cycles = await prisma.registrationCycle.findMany({
-    where: { startsAt: { lte: now }, group: null, participationRequests: { some: {} } },
+    where: {
+      startsAt: { lte: now },
+      group: null,
+      OR: [{ participationRequests: { some: {} } }, { removedRequesters: { some: {} } }],
+    },
     include: {
       participationRequests: {
         where: {
@@ -49,6 +53,9 @@ export async function startDueGroups() {
       await prisma.$transaction(async (tx) => {
         // Every request lapses here, so a review arriving later can't bring a group to life.
         await tx.participationRequest.deleteMany({ where: { cycleId: cycle.id } });
+        // The emails of removed requesters only kept them from asking again in this cycle:
+        // with the journey started they serve no purpose, and a removal deletes all data.
+        await tx.removedRequester.deleteMany({ where: { cycleId: cycle.id } });
         if (memberIds.length === 0) return;
 
         await tx.group.create({
