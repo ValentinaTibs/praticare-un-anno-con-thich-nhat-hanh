@@ -28,10 +28,13 @@ function groupIdFor(request: FastifyRequest) {
   return request.user.groupId;
 }
 
+// A channel left open when its group ended counts as closed until the job closes it.
 function findOpenChannel(request: FastifyRequest) {
   const groupId = groupIdFor(request);
   if (!groupId) return null;
-  return prisma.sharingChannel.findFirst({ where: { status: 'open', groupId } });
+  return prisma.sharingChannel.findFirst({
+    where: { status: 'open', groupId, group: { OR: [{ endedAt: null }, { endedAt: { gt: new Date() } }] } },
+  });
 }
 
 export async function sharingChannelRoutes(app: FastifyInstance) {

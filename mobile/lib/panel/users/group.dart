@@ -12,7 +12,7 @@ class PanelGroup {
 
   const PanelGroup({required this.id, required this.startedAt, this.endedAt, this.memberCount = 0});
 
-  /// Ended groups are archived. Until groups end automatically (#82) none is.
+  /// Ended groups are archived: the backend sets endedAt when the journey has passed.
   bool get isArchived => endedAt != null && !endedAt!.isAfter(DateTime.now());
 
   String get label => 'Gruppo iniziato il ${formatDate(startedAt)}';

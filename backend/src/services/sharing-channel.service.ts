@@ -78,9 +78,10 @@ async function closeChannel(channelId: string, now: Date) {
   await prisma.sharingChannelMember.deleteMany({ where: { sharingChannelId: channelId } });
 }
 
+// At its scheduled time, or earlier if the group's journey has ended meanwhile.
 async function closeDueChannels(now: Date) {
   const channels = await prisma.sharingChannel.findMany({
-    where: { status: 'open', scheduledClosedAt: { lte: now } },
+    where: { status: 'open', OR: [{ scheduledClosedAt: { lte: now } }, { group: { endedAt: { lte: now } } }] },
     select: { id: true },
   });
   for (const channel of channels) await closeChannel(channel.id, now);

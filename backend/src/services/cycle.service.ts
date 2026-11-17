@@ -21,6 +21,22 @@ export async function closeExpiredCycles() {
   });
 }
 
+// Archives the groups whose journey has passed: their members are waiting users again.
+// After downtime the end is still the planned one, and a group already ended keeps its date.
+export async function endDueGroups() {
+  const now = new Date();
+  const groups = await prisma.group.findMany({
+    where: { endedAt: null, startedAt: { lte: now } },
+    select: { id: true, cycle: { select: { startsAt: true, durationDays: true } } },
+  });
+
+  for (const { id, cycle } of groups) {
+    const endsAt = journeyEndsAt(cycle.startsAt, cycle.durationDays);
+    if (endsAt > now) continue;
+    await prisma.group.updateMany({ where: { id, endedAt: null }, data: { endedAt: endsAt } });
+  }
+}
+
 // Brings to life the groups of cycles whose journey has started. Late runs catch up after
 // downtime: the group still starts on the cycle's date, and runs can't create it twice.
 // A cycle that fails doesn't hold back the others: the errors are thrown together at the end,
