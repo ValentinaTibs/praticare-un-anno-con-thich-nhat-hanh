@@ -130,15 +130,11 @@ export async function adminRoutes(app: FastifyInstance) {
       select: { cycleId: true },
     });
 
-    // All or nothing: their scheduled posts become drafts so they won't auto-publish,
-    // and their sharing channel messages go with the account (cascade). If a ban arrived
-    // meanwhile, the delete matches nothing and the ban stays.
+    // All or nothing: their sharing channel messages go with the account (cascade), while
+    // their Main Channel templates and posts stay where they are, without an author.
+    // If a ban arrived meanwhile, the delete matches nothing and the ban stays.
     await unlessChanged(
       prisma.$transaction([
-        prisma.mainChannelPost.updateMany({
-          where: { authorId: target.id, publishedAt: null, isDraft: false },
-          data: { isDraft: true },
-        }),
         prisma.removedRequester.createMany({
           data: pendingRequests.map(({ cycleId }) => ({ cycleId, email: target.email })),
           skipDuplicates: true,

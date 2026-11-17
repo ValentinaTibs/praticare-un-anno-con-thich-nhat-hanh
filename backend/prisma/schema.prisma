@@ -30,6 +30,11 @@ enum ConfirmationStatus {
   missed
 }
 
+enum TemplateStatus {
+  draft
+  scheduled
+}
+
 enum CycleStatus {
   open
   closed
@@ -55,6 +60,7 @@ model User {
   group                 Group?                 @relation(fields: [groupId], references: [id], onDelete: SetNull)
   devices               UserDevice[]
   refreshTokens         RefreshToken[]
+  mainChannelTemplates  MainChannelTemplate[]
   mainChannelPosts      MainChannelPost[]
   sharingChannelSession SharingChannelMember[]
   sharingChannelPosts   SharingChannelPost[]
@@ -89,19 +95,62 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-model MainChannelPost {
-  id          String    @id @default(uuid())
-  authorId    String?   @map("author_id")
+// The single sequence of Main Channel posts shared by every group: each template is
+// copied into a group's Main Channel when the group reaches its journey day and time.
+model MainChannelTemplate {
+  id          String         @id @default(uuid())
+  authorId    String?        @map("author_id")
   content     String
-  mediaUrl    String?   @map("media_url")
-  scheduledAt DateTime? @map("scheduled_at")
-  publishedAt DateTime? @map("published_at")
-  isDraft     Boolean   @default(false) @map("is_draft")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  journeyDay  Int            @map("journey_day") // 1 = the group's start date
+  publishTime String         @default("08:00") @map("publish_time") // HH:MM, Italian time
+  status      TemplateStatus @default(draft)
+  // When the template last entered the sequence at its current day and time: a group
+  // that had already reached that moment doesn't receive it.
+  sequencedAt DateTime?      @map("sequenced_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  author       User?                    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  posts        MainChannelPost[]
+  publications MainChannelPublication[]
 
+  @@index([status, journeyDay])
+  @@map("main_channel_templates")
+}
+
+// That a template has been published in a group. It outlives the copy, so a copy
+// deleted by an admin is never published again.
+model MainChannelPublication {
+  groupId     String   @map("group_id")
+  templateId  String   @map("template_id")
+  publishedAt DateTime @map("published_at")
+
+  group    Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  template MainChannelTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, templateId])
+  @@index([templateId])
+  @@map("main_channel_publications")
+}
+
+// A post published in a group's Main Channel. It is born at publication, as a copy
+// of a template or without one, and then lives on its own.
+model MainChannelPost {
+  id          String   @id @default(uuid())
+  groupId     String   @map("group_id")
+  templateId  String?  @map("template_id")
+  authorId    String?  @map("author_id")
+  content     String
+  publishedAt DateTime @map("published_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  group    Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  template MainChannelTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  author   User?                @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, publishedAt])
+  @@index([templateId])
   @@map("main_channel_posts")
 }
 
@@ -231,8 +280,10 @@ model Group {
   createdAt DateTime  @default(now()) @map("created_at")
 
   cycle           RegistrationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  members         User[]
-  sharingChannels SharingChannel[]
+  members          User[]
+  sharingChannels  SharingChannel[]
+  mainChannelPosts MainChannelPost[]
+  publications     MainChannelPublication[]
 
   @@map("groups")
 }

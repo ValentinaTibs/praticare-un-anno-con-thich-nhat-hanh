@@ -30,6 +30,18 @@ export function calendarDateInRome(instant: Date): string {
   return ROME_CALENDAR.format(instant);
 }
 
+// The YYYY-MM-DD calendar date this many days after another one (before, if negative).
+export function addCalendarDays(date: string, days: number): string {
+  const day = new Date(`${date}T00:00:00.000Z`);
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0, 10);
+}
+
+// How many days go from one YYYY-MM-DD calendar date to a later one.
+export function calendarDaysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00.000Z`) - Date.parse(`${from}T00:00:00.000Z`)) / 86_400_000);
+}
+
 // The instant when clocks in Italy show this HH:MM on a YYYY-MM-DD calendar date.
 // A time skipped when clocks go forward falls one hour later.
 export function wallTimeInRome(date: string, time: string): Date {
