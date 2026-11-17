@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../sharing_channel_notifier.dart';
 import '../../../core/models/sharing_channel_post.dart';
+import '../../../core/theme/lanterna_theme.dart';
+import '../../../core/widgets/lanterna_marks.dart';
 import '../../auth/auth_notifier.dart';
+import '../circle_status.dart';
+import '../sharing_channel_notifier.dart';
+
+const _gutter = 24.0;
+
+String _closesAt(DateTime date) => 'Si chiude alle ${DateFormat('H:mm').format(date.toLocal())}';
+
+String _peopleLabel(int? count) => switch (count) {
+      null => 'Il cerchio è aperto',
+      1 => '1 persona è nel cerchio',
+      _ => '$count persone sono nel cerchio',
+    };
 
 class SharingChannelScreen extends ConsumerStatefulWidget {
   const SharingChannelScreen({super.key});
@@ -15,6 +29,7 @@ class SharingChannelScreen extends ConsumerStatefulWidget {
 class _SharingChannelScreenState extends ConsumerState<SharingChannelScreen> {
   final _ctrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  bool _leaving = false;
 
   @override
   void dispose() {
@@ -51,6 +66,21 @@ class _SharingChannelScreenState extends ConsumerState<SharingChannelScreen> {
     }
   }
 
+  // The back arrow leaves the circle and goes back to the home.
+  Future<void> _leave() async {
+    setState(() => _leaving = true);
+    try {
+      await ref.read(sharingChannelProvider.notifier).leave();
+      if (!mounted) return;
+      ref.invalidate(circleStatusProvider);
+      context.go('/home/main-channel');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _leaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Non è stato possibile uscire dal cerchio. Riprova.')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(sharingChannelProvider);
@@ -60,21 +90,47 @@ class _SharingChannelScreenState extends ConsumerState<SharingChannelScreen> {
       if (next.posts.length > (prev?.posts.length ?? 0)) _scrollToBottom();
     });
 
+    final joined = state.phase == SharingChannelPhase.joined;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Condivisione'),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(joined ? 8 : _gutter, 12, _gutter, 16),
+              child: Row(
+                children: [
+                  if (joined) ...[
+                    IconButton(
+                      onPressed: _leaving ? null : _leave,
+                      tooltip: 'Esci dal cerchio',
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Semantics(
+                    header: true,
+                    child: Text('Il cerchio', style: Theme.of(context).textTheme.headlineSmall),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: switch (state.phase) {
+                SharingChannelPhase.closed => const _ClosedView(),
+                SharingChannelPhase.openNotJoined => _JoinView(state: state),
+                SharingChannelPhase.joined => _ChatView(
+                    state: state,
+                    myId: me?.id,
+                    scrollCtrl: _scrollCtrl,
+                    ctrl: _ctrl,
+                    onSend: _send,
+                  ),
+              },
+            ),
+          ],
+        ),
       ),
-      body: switch (state.phase) {
-        SharingChannelPhase.closed => const _ClosedView(),
-        SharingChannelPhase.openNotJoined => _JoinView(loading: state.loading),
-        SharingChannelPhase.joined => _ChatView(
-            state: state,
-            me: me,
-            scrollCtrl: _scrollCtrl,
-            ctrl: _ctrl,
-            onSend: _send,
-          ),
-      },
     );
   }
 }
@@ -84,47 +140,63 @@ class _ClosedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('Nessuna sessione di condivisione in corso', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text('Riceverai una notifica quando se ne apre una.', style: TextStyle(color: Colors.grey[600])),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(_gutter),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleDots(size: 64, filled: 0),
+              const SizedBox(height: 24),
+              Text('Il cerchio è chiuso', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              const Text(
+                'Riceverai una notifica quando si apre.',
+                style: LanternaText.caption,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
 }
 
+/// Open, not joined yet: what joining means, and the button that joins.
 class _JoinView extends ConsumerWidget {
-  final bool loading;
-  const _JoinView({required this.loading});
+  final SharingChannelState state;
+  const _JoinView({required this.state});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(sharingChannelProvider);
+    final closesAt = state.scheduledClosedAt;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(_gutter),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.group_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
-            Text('La sessione di condivisione è aperta!', style: Theme.of(context).textTheme.titleLarge),
-            if (state.scheduledClosedAt != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Chiude alle ${DateFormat('HH:mm').format(state.scheduledClosedAt!.toLocal())}',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ],
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: loading ? null : () => ref.read(sharingChannelProvider.notifier).join(),
-              icon: const Icon(Icons.login),
-              label: loading ? const Text('Ingresso…') : const Text('Entra nella sessione'),
+            CircleDots(size: 64, filled: state.memberCount ?? CircleDots.dots),
+            const SizedBox(height: 24),
+            Text('Il cerchio è aperto', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              [
+                if (state.memberCount != null) _peopleLabel(state.memberCount),
+                if (closesAt != null) _closesAt(closesAt),
+              ].join(' · '),
+              style: LanternaText.caption,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Entrando potrai leggere e scrivere i messaggi del cerchio: ognuno mostra nome e cognome '
+              'di chi scrive. Alla chiusura i messaggi si cancellano.',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: state.loading ? null : () => ref.read(sharingChannelProvider.notifier).join(),
+              child: Text(state.loading ? 'Ingresso…' : 'Entra nel cerchio'),
             ),
           ],
         ),
@@ -135,14 +207,14 @@ class _JoinView extends ConsumerWidget {
 
 class _ChatView extends StatelessWidget {
   final SharingChannelState state;
-  final dynamic me;
+  final String? myId;
   final ScrollController scrollCtrl;
   final TextEditingController ctrl;
   final VoidCallback onSend;
 
   const _ChatView({
     required this.state,
-    required this.me,
+    required this.myId,
     required this.scrollCtrl,
     required this.ctrl,
     required this.onSend,
@@ -152,20 +224,23 @@ class _ChatView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (state.closingSoon)
-          MaterialBanner(
-            content: Text('Chiude tra ${state.minutesRemaining} minuti'),
-            backgroundColor: Colors.orange[100],
-            actions: [TextButton(onPressed: () {}, child: const Text('OK'))],
-          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: _gutter),
+          child: _StatusCard(state: state),
+        ),
         Expanded(
           child: state.posts.isEmpty
-              ? Center(child: Text('Ancora nessun messaggio. Scrivi qualcosa!', style: TextStyle(color: Colors.grey[500])))
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(_gutter),
+                    child: Text('Ancora nessun messaggio.', style: LanternaText.caption),
+                  ),
+                )
               : ListView.builder(
                   controller: scrollCtrl,
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.fromLTRB(_gutter, 24, _gutter, 8),
                   itemCount: state.posts.length,
-                  itemBuilder: (_, i) => _Bubble(post: state.posts[i], isMe: me?.id == state.posts[i].author.id),
+                  itemBuilder: (_, i) => _Message(post: state.posts[i], isMe: myId == state.posts[i].author.id),
                 ),
         ),
         _InputBar(ctrl: ctrl, onSend: onSend),
@@ -174,60 +249,90 @@ class _ChatView extends StatelessWidget {
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final SharingChannelPost post;
-  final bool isMe;
-  const _Bubble({required this.post, required this.isMe});
+/// How many people are in, when it closes, and that the messages go then.
+class _StatusCard extends StatelessWidget {
+  final SharingChannelState state;
+  const _StatusCard({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    final closesAt = state.scheduledClosedAt;
+    final closing = state.closingSoon
+        ? 'Chiude tra ${state.minutesRemaining} minuti · i messaggi poi si cancellano'
+        : closesAt != null
+            ? '${_closesAt(closesAt)} · i messaggi poi si cancellano'
+            : 'Alla chiusura i messaggi si cancellano';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: LanternaColors.surface, borderRadius: BorderRadius.circular(18)),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isMe) ...[
-            CircleAvatar(radius: 14, child: Text(post.author.name[0].toUpperCase())),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                if (!isMe)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2, left: 4),
-                    child: Text(post.author.fullName, style: Theme.of(context).textTheme.labelSmall),
+          CircleDots(size: 44, filled: state.memberCount ?? CircleDots.dots),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Semantics(
+              liveRegion: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _peopleLabel(state.memberCount),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LanternaColors.text),
                   ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isMe ? scheme.primary : scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isMe ? 16 : 4),
-                      bottomRight: Radius.circular(isMe ? 4 : 16),
-                    ),
+                  const SizedBox(height: 3),
+                  Text(
+                    closing,
+                    style: LanternaText.caption.copyWith(color: state.closingSoon ? LanternaColors.accent : null),
                   ),
-                  child: Text(
-                    post.content,
-                    style: TextStyle(color: isMe ? scheme.onPrimary : scheme.onSurface),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
-                  child: Text(
-                    DateFormat('HH:mm').format(post.createdAt.toLocal()),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A message without a bubble: name in amber, text in the reading serif. One's
+/// own messages say "Tu" and have an amber rule on the left.
+class _Message extends StatelessWidget {
+  final SharingChannelPost post;
+  final bool isMe;
+  const _Message({required this.post, required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final time = DateFormat('H:mm').format(post.createdAt.toLocal());
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Container(
+        padding: EdgeInsets.only(left: isMe ? 14 : 0),
+        decoration: isMe
+            ? const BoxDecoration(border: Border(left: BorderSide(color: LanternaColors.accent, width: 2)))
+            : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: isMe ? 'Tu' : post.author.fullName,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isMe ? LanternaColors.muted : LanternaColors.accent,
+                    ),
+                  ),
+                  TextSpan(text: '  ·  $time', style: const TextStyle(color: LanternaColors.muted)),
+                ],
+              ),
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(post.content, style: LanternaText.circleMessage),
+          ],
+        ),
       ),
     );
   }
@@ -240,31 +345,26 @@ class _InputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: ctrl,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'Messaggio…',
-                  filled: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-                onSubmitted: (_) => onSend(),
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(_gutter, 8, _gutter, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: ctrl,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(hintText: 'Scrivi al cerchio…'),
+              onSubmitted: (_) => onSend(),
             ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: onSend,
-              icon: const Icon(Icons.send),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 10),
+          IconButton.filled(
+            onPressed: onSend,
+            tooltip: 'Invia',
+            style: IconButton.styleFrom(minimumSize: const Size.square(52)),
+            icon: const Icon(Icons.arrow_upward),
+          ),
+        ],
       ),
     );
   }

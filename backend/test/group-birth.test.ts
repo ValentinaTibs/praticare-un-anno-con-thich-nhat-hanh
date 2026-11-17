@@ -186,6 +186,7 @@ describe('Nascita del gruppo', () => {
 
     const me = (await app.inject({ method: 'GET', url: '/api/users/me', headers })).json();
     expect(me.group.startedAt).toBe(cycle.startsAt.toISOString());
+    expect(me.group.durationDays).toBe(cycle.durationDays);
   });
 
   it('un utente già in un gruppo attivo non viene spostato nel nuovo gruppo', async () => {

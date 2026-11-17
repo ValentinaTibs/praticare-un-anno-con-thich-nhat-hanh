@@ -9,6 +9,9 @@ class NextJourney {
 
   /// Requests are being taken for this journey.
   final bool open;
+
+  /// When requests are due to close, if set.
+  final DateTime? requestsCloseAt;
   final int requesters;
 
   /// The user has a request in progress for this journey.
@@ -20,6 +23,7 @@ class NextJourney {
   const NextJourney({
     this.startsAt,
     this.open = false,
+    this.requestsCloseAt,
     this.requesters = 0,
     this.requested = false,
     this.canRequest = false,
@@ -30,6 +34,10 @@ class NextJourney {
     return NextJourney(
       startsAt: cycle == null ? null : DateTime.parse(cycle['startsAt'] as String),
       open: cycle?['open'] as bool? ?? false,
+      requestsCloseAt: switch (cycle?['scheduledClosedAt']) {
+        final String date => DateTime.parse(date),
+        _ => null,
+      },
       requesters: json['requesters'] as int,
       requested: json['requested'] as bool,
       canRequest: json['canRequest'] as bool,

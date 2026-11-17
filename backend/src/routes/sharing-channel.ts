@@ -64,9 +64,10 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
 
     if (!channel) return reply.send({ status: 'closed' });
 
-    const membership = await prisma.sharingChannelMember.findFirst({
-      where: { sharingChannelId: channel.id, userId: request.user.id },
-    });
+    const [membership, memberCount] = await Promise.all([
+      prisma.sharingChannelMember.findFirst({ where: { sharingChannelId: channel.id, userId: request.user.id } }),
+      prisma.sharingChannelMember.count({ where: { sharingChannelId: channel.id } }),
+    ]);
 
     return reply.send({
       status: 'open',
@@ -74,6 +75,8 @@ export async function sharingChannelRoutes(app: FastifyInstance) {
       openedAt: channel.openedAt,
       scheduledClosedAt: channel.scheduledClosedAt,
       joined: !!membership,
+      // How many people are in the circle now, never who (spec, section 9).
+      memberCount,
     });
   });
 

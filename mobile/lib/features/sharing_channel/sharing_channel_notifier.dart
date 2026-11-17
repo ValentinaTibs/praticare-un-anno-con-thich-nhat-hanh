@@ -10,6 +10,9 @@ class SharingChannelState {
   final SharingChannelPhase phase;
   final String? channelId;
   final DateTime? scheduledClosedAt;
+
+  /// How many people are in the circle now; null if the backend does not say.
+  final int? memberCount;
   final List<SharingChannelPost> posts;
   final bool closingSoon;
   final int? minutesRemaining;
@@ -20,6 +23,7 @@ class SharingChannelState {
     this.phase = SharingChannelPhase.closed,
     this.channelId,
     this.scheduledClosedAt,
+    this.memberCount,
     this.posts = const [],
     this.closingSoon = false,
     this.minutesRemaining,
@@ -31,6 +35,7 @@ class SharingChannelState {
     SharingChannelPhase? phase,
     String? channelId,
     DateTime? scheduledClosedAt,
+    int? memberCount,
     List<SharingChannelPost>? posts,
     bool? closingSoon,
     int? minutesRemaining,
@@ -41,6 +46,7 @@ class SharingChannelState {
         phase: phase ?? this.phase,
         channelId: channelId ?? this.channelId,
         scheduledClosedAt: scheduledClosedAt ?? this.scheduledClosedAt,
+        memberCount: memberCount ?? this.memberCount,
         posts: posts ?? this.posts,
         closingSoon: closingSoon ?? this.closingSoon,
         minutesRemaining: minutesRemaining ?? this.minutesRemaining,
@@ -84,6 +90,7 @@ class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
         phase: joined ? SharingChannelPhase.joined : SharingChannelPhase.openNotJoined,
         channelId: d['channelId'] as String,
         scheduledClosedAt: closeTime,
+        memberCount: d['memberCount'] as int?,
         closingSoon: closingSoon,
         minutesRemaining: closingSoon ? (remaining.inSeconds / 60).ceil().clamp(1, closingWarning.inMinutes) : null,
       );
@@ -117,6 +124,15 @@ class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
     } catch (e) {
       if (!mounted) return;
       state = state.copyWith(loading: false, error: e.toString());
+    }
+  }
+
+  /// Leaves the circle. Already out, or the circle already closed, counts as done.
+  Future<void> leave() async {
+    try {
+      await _api.delete('/api/sharing-channel/leave');
+    } on ApiException catch (e) {
+      if (e.statusCode != 404) rethrow;
     }
   }
 

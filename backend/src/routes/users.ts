@@ -4,6 +4,7 @@ import { Prisma, UserStatus } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
+import { sessionGroup, sessionGroupSelect } from '../utils/session-group.js';
 
 export const adminUserSelect = {
   id: true,
@@ -45,10 +46,10 @@ export async function userRoutes(app: FastifyInstance) {
         status: true,
         lastConfirmedAt: true,
         createdAt: true,
-        group: { select: { id: true, startedAt: true, endedAt: true } },
+        group: sessionGroupSelect,
       },
     });
-    return reply.send(user);
+    return reply.send({ ...user, group: sessionGroup(user.group) });
   });
 
   // PATCH /api/users/me

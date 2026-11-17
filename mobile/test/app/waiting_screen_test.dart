@@ -12,6 +12,9 @@ const _requests = '/api/cycles/requests';
 const _mine = '/api/cycles/requests/mine';
 const _askLabel = 'Chiedi di partecipare';
 const _cancelLabel = 'Annulla la richiesta';
+const _closed = 'Le richieste di partecipazione sono chiuse.';
+// A title only the waiting screen has.
+const _waitingTitle = 'Prossimo percorso';
 
 Map<String, dynamic> nextJson({
   bool open = true,
@@ -19,9 +22,10 @@ Map<String, dynamic> nextJson({
   bool? canRequest,
   int requesters = 0,
   String startsAt = '2099-01-12T10:00:00.000Z',
+  String? requestsCloseAt,
 }) =>
     {
-      'cycle': {'id': 'c1', 'open': open, 'startsAt': startsAt, 'durationDays': 365, 'scheduledClosedAt': null},
+      'cycle': {'id': 'c1', 'open': open, 'startsAt': startsAt, 'durationDays': 365, 'scheduledClosedAt': requestsCloseAt},
       'requesters': requesters,
       'requested': requested,
       'canRequest': canRequest ?? (open && !requested),
@@ -65,16 +69,16 @@ void main() {
   testWidgets('chi non ha un gruppo vede solo la schermata In attesa e il profilo', (tester) async {
     await pumpApp(tester, {_next: (200, nextJson())});
 
-    expect(find.text('In attesa'), findsOneWidget);
-    expect(find.text('Condivisione'), findsNothing);
+    expect(find.text(_waitingTitle), findsOneWidget);
+    expect(find.text('Cerchio'), findsNothing);
     expect(find.text('Profilo'), findsOneWidget);
   });
 
   testWidgets('chi è in un gruppo attivo non vede la schermata In attesa', (tester) async {
     await pumpApp(tester, {'/api/users/me': (200, memberJson())});
 
-    expect(find.text('In attesa'), findsNothing);
-    expect(find.text('Condivisione'), findsOneWidget);
+    expect(find.text(_waitingTitle), findsNothing);
+    expect(find.text('Cerchio'), findsOneWidget);
   });
 
   testWidgets('a gruppo finito si torna alla schermata In attesa', (tester) async {
@@ -83,8 +87,8 @@ void main() {
       _next: (200, nextJson()),
     });
 
-    expect(find.text('In attesa'), findsOneWidget);
-    expect(find.text('Condivisione'), findsNothing);
+    expect(find.text(_waitingTitle), findsOneWidget);
+    expect(find.text('Cerchio'), findsNothing);
   });
 
   testWidgets('a ciclo aperto mostra data e numero dei richiedenti e permette di chiedere', (tester) async {
@@ -97,14 +101,14 @@ void main() {
       },
     });
 
-    expect(find.text('Sono aperte le richieste per il percorso che inizia il 12 gennaio 2099.'), findsOneWidget);
-    expect(find.text('2 persone hanno chiesto di partecipare al prossimo percorso.'), findsOneWidget);
+    expect(find.text('12 gennaio 2099'), findsOneWidget);
+    expect(find.text('2 persone hanno chiesto di partecipare.'), findsOneWidget);
 
     await tapAndSettle(tester, find.text(_askLabel));
 
     expect(http.calls(_requests), 1);
-    expect(find.text('Hai chiesto di partecipare al percorso che inizia il 12 gennaio 2099.'), findsOneWidget);
-    expect(find.text('3 persone hanno chiesto di partecipare al prossimo percorso.'), findsOneWidget);
+    expect(find.text('La tua richiesta è arrivata. Un admin la leggerà.'), findsOneWidget);
+    expect(find.text('3 persone hanno chiesto di partecipare.'), findsOneWidget);
     expect(find.text(_cancelLabel), findsOneWidget);
     expect(find.text(_askLabel), findsNothing);
   });
@@ -143,16 +147,17 @@ void main() {
     await pumpApp(tester, {_next: (200, nextJson(open: false, requesters: 1))});
 
     expect(enabled(tester, _askLabel), isFalse);
-    expect(find.text('Le richieste di partecipazione sono chiuse. Il prossimo percorso inizia il 12 gennaio 2099.'), findsOneWidget);
-    expect(find.text('1 persona ha chiesto di partecipare al prossimo percorso.'), findsOneWidget);
+    expect(find.text(_closed), findsOneWidget);
+    expect(find.text('12 gennaio 2099'), findsOneWidget);
+    expect(find.text('1 persona ha chiesto di partecipare.'), findsOneWidget);
   });
 
   testWidgets('senza percorsi in programma il pulsante è disattivato e non c\'è il conteggio', (tester) async {
     await pumpApp(tester, {_next: (200, _noJourney)});
 
     expect(enabled(tester, _askLabel), isFalse);
-    expect(find.text('Le richieste di partecipazione sono chiuse.'), findsOneWidget);
-    expect(find.textContaining('prossimo percorso.'), findsNothing);
+    expect(find.text(_closed), findsOneWidget);
+    expect(find.textContaining('chiesto di partecipare'), findsNothing);
   });
 
   testWidgets('chi è stato rimosso dal ciclo aperto non può chiedere', (tester) async {
@@ -189,8 +194,14 @@ void main() {
       },
     });
 
-    expect(find.text('In attesa'), findsNothing);
-    expect(find.text('Condivisione'), findsOneWidget);
+    expect(find.text(_waitingTitle), findsNothing);
+    expect(find.text('Cerchio'), findsOneWidget);
+  });
+
+  testWidgets('con una chiusura programmata dice fino a quando si può chiedere', (tester) async {
+    await pumpApp(tester, {_next: (200, nextJson(requesters: 2, requestsCloseAt: '2098-12-20T10:00:00.000Z'))});
+
+    expect(find.text('2 persone hanno chiesto di partecipare. Richieste aperte fino al 20 dicembre.'), findsOneWidget);
   });
 
   testWidgets('un errore si può riprovare', (tester) async {

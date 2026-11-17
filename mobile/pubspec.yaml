@@ -42,3 +42,26 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Font licenses, shown in the app's license page (SIL Open Font License).
+  assets:
+    - assets/fonts/Inter-OFL.txt
+    - assets/fonts/Literata-OFL.txt
+
+  # "Lanterna" style fonts (docs/design-lanterna.md), bundled so the app works
+  # offline and never calls Google Fonts.
+  fonts:
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata-Regular.ttf
+        - asset: assets/fonts/Literata-Italic.ttf
+          style: italic
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700

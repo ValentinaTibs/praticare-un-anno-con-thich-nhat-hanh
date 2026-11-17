@@ -7,6 +7,7 @@ import { verifyFirebaseToken, EmailNotVerifiedError } from '../services/firebase
 import { authenticate } from '../middleware/authenticate.js';
 import { randomUUID } from 'crypto';
 import { addDays } from '../utils/date.js';
+import { sessionGroup, sessionGroupSelect } from '../utils/session-group.js';
 
 const firebaseBody = z.object({ idToken: z.string().min(1) });
 const registerBody = z.object({
@@ -18,7 +19,7 @@ const registerBody = z.object({
 });
 const refreshBody = z.object({ refreshToken: z.string() });
 const deviceBody = z.object({ fcmToken: z.string() });
-const withGroup = { group: { select: { id: true, startedAt: true, endedAt: true } } } as const;
+const withGroup = { group: sessionGroupSelect } as const;
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /api/auth/dev-login — development only, skips Firebase entirely
@@ -205,7 +206,7 @@ function safeUser(user: {
   surname: string;
   role: string;
   status: string;
-  group?: { id: string; startedAt: Date; endedAt: Date | null } | null;
+  group?: Parameters<typeof sessionGroup>[0];
 }) {
   return {
     id: user.id,
@@ -215,6 +216,6 @@ function safeUser(user: {
     role: user.role,
     status: user.status,
     // The app tells waiting users from group members with it, as with /api/users/me.
-    group: user.group ?? null,
+    group: sessionGroup(user.group),
   };
 }

@@ -17,6 +17,11 @@ class User {
   /// When the user's group ended. Only the session user has it.
   final DateTime? groupEndedAt;
 
+  /// When the user's group started, and how many days its journey lasts. Only
+  /// the session user has them; the home shows "Giorno N di D" with them.
+  final DateTime? groupStartedAt;
+  final int? groupDurationDays;
+
   const User({
     required this.id,
     required this.name,
@@ -30,6 +35,8 @@ class User {
     this.createdAt,
     this.groupId,
     this.groupEndedAt,
+    this.groupStartedAt,
+    this.groupDurationDays,
   });
 
   User copyWith({String? status, bool? reviewedByAdmin, DateTime? lastConfirmedAt}) => User(
@@ -45,6 +52,8 @@ class User {
         createdAt: createdAt,
         groupId: groupId,
         groupEndedAt: groupEndedAt,
+        groupStartedAt: groupStartedAt,
+        groupDurationDays: groupDurationDays,
       );
 
   bool get isAdmin => role == 'admin' || role == 'super_admin';
@@ -92,5 +101,10 @@ class User {
           final String date => DateTime.parse(date),
           _ => null,
         },
+        groupStartedAt: switch ((json['group'] as Map<String, dynamic>?)?['startedAt']) {
+          final String date => DateTime.parse(date),
+          _ => null,
+        },
+        groupDurationDays: (json['group'] as Map<String, dynamic>?)?['durationDays'] as int?,
       );
 }

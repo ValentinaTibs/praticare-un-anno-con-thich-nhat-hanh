@@ -36,12 +36,13 @@ describe('Cerchio di condivisione', () => {
       status: 'open',
       scheduledClosedAt: '2030-01-05T12:00:00.000Z',
       joined: false,
+      memberCount: 0,
     });
 
     await join(app, headers);
 
     const after = await app.inject({ method: 'GET', url: '/api/sharing-channel/status', headers });
-    expect(after.json()).toMatchObject({ joined: true });
+    expect(after.json()).toMatchObject({ joined: true, memberCount: 1 });
   });
 
   it('chi è entrato scrive un messaggio e gli altri partecipanti lo vedono con nome e cognome', async () => {

@@ -1,23 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/constants.dart';
+import '../../../core/theme/lanterna_theme.dart';
 import '../../../core/widgets/error_retry.dart';
+import '../../../core/widgets/lanterna_marks.dart';
 import '../../auth/auth_notifier.dart';
+import '../../daily_quote/daily_quote.dart';
 import '../next_journey.dart';
+
+const _gutter = 24.0;
 
 // Fixed until the Super Admin can edit it from the panel (#34).
 const _closedMessage = 'Le richieste di partecipazione sono chiuse.';
 const _removedMessage = 'Potrai chiedere di partecipare dal prossimo percorso.';
-
-String _date(DateTime date) => DateFormat('d MMMM y').format(date.toLocal());
+const _requestedMessage = 'La tua richiesta è arrivata. Un admin la leggerà.';
 
 String _requestersLabel(int count) => switch (count) {
-      0 => 'Nessuno ha ancora chiesto di partecipare al prossimo percorso.',
-      1 => '1 persona ha chiesto di partecipare al prossimo percorso.',
-      _ => '$count persone hanno chiesto di partecipare al prossimo percorso.',
+      0 => 'Nessuno ha ancora chiesto di partecipare.',
+      1 => '1 persona ha chiesto di partecipare.',
+      _ => '$count persone hanno chiesto di partecipare.',
     };
+
+/// "Martedì 17 novembre".
+String _today() {
+  final text = DateFormat('EEEE d MMMM').format(DateTime.now());
+  return text[0].toUpperCase() + text.substring(1);
+}
 
 /// The only screen of a user outside any active group, besides the profile.
 class WaitingScreen extends ConsumerStatefulWidget {
@@ -80,59 +91,133 @@ class _WaitingScreenState extends ConsumerState<WaitingScreen> {
     }
   }
 
-  String _status(NextJourney journey) {
-    final startsAt = journey.startsAt;
-    if (startsAt == null) return _closedMessage;
-    final date = _date(startsAt);
-    if (journey.requested) return 'Hai chiesto di partecipare al percorso che inizia il $date.';
-    if (journey.open) {
-      return journey.canRequest ? 'Sono aperte le richieste per il percorso che inizia il $date.' : _removedMessage;
-    }
-    return '$_closedMessage Il prossimo percorso inizia il $date.';
-  }
-
   @override
   Widget build(BuildContext context) {
     final journey = ref.watch(nextJourneyProvider);
+    final quote = ref.watch(dailyQuoteProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text(AppConstants.appName)),
-      body: RefreshIndicator(
-        onRefresh: _reload,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
-          children: [
-            Semantics(
-              header: true,
-              child: Text('In attesa', style: Theme.of(context).textTheme.headlineSmall),
-            ),
-            const SizedBox(height: 16),
-            journey.when(
-              skipLoadingOnRefresh: true,
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => ErrorRetry(
-                message: e is ApiException ? e.message : 'Impossibile caricare il prossimo percorso.',
-                onRetry: _reload,
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _reload,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(_gutter, 8, _gutter, _gutter),
+                sliver: SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Semantics(
+                              header: true,
+                              child: const Text(
+                                AppConstants.appName,
+                                style: TextStyle(fontFamily: LanternaFonts.serif, fontSize: 17, color: LanternaColors.text),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => context.go('/home/profile'),
+                            tooltip: 'Profilo',
+                            icon: const Icon(Icons.person_outline, color: LanternaColors.muted),
+                          ),
+                        ],
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Lantern(),
+                                const SizedBox(height: 18),
+                                Text(_today(), style: LanternaText.caption),
+                                if (quote != null) ...[
+                                  const SizedBox(height: 22),
+                                  DailyQuoteText(quote, style: LanternaText.quoteLarge),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(color: LanternaColors.surface, borderRadius: BorderRadius.circular(20)),
+                        child: journey.when(
+                          skipLoadingOnRefresh: true,
+                          loading: () => const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                          error: (e, _) => ErrorRetry(
+                            message: e is ApiException ? e.message : 'Impossibile caricare il prossimo percorso.',
+                            onRetry: _reload,
+                          ),
+                          data: _nextJourney,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              data: _content,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _content(NextJourney journey) {
+  /// The "Prossimo percorso" box: start date, requests so far and the button.
+  Widget _nextJourney(NextJourney journey) {
     final theme = Theme.of(context);
+    final startsAt = journey.startsAt;
+    final closeAt = journey.requestsCloseAt;
+    final requesters = startsAt == null
+        ? null
+        : [
+            _requestersLabel(journey.requesters),
+            if (journey.open && journey.canRequest && !journey.requested && closeAt != null)
+              'Richieste aperte fino al ${DateFormat('d MMMM').format(closeAt.toLocal())}.',
+          ].join(' ');
+    final status = switch (journey) {
+      NextJourney(requested: true) => _requestedMessage,
+      NextJourney(startsAt: null) || NextJourney(open: false) => _closedMessage,
+      NextJourney(canRequest: false) => _removedMessage,
+      _ => null,
+    };
+    final muted = theme.textTheme.bodyMedium?.copyWith(color: LanternaColors.muted);
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Semantics(liveRegion: true, child: Text(_status(journey), style: theme.textTheme.bodyLarge)),
-        if (journey.startsAt != null) ...[
-          const SizedBox(height: 12),
-          Text(_requestersLabel(journey.requesters), style: theme.textTheme.bodyMedium),
+        Semantics(header: true, child: Text('Prossimo percorso', style: theme.textTheme.titleMedium)),
+        if (startsAt != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            DateFormat('d MMMM y').format(startsAt.toLocal()),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: LanternaColors.accent),
+          ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
+        Semantics(
+          liveRegion: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (requesters != null) Text(requesters, style: muted),
+              if (requesters != null && status != null) const SizedBox(height: 8),
+              if (status != null) Text(status, style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
         if (journey.requested)
           OutlinedButton(
             onPressed: _busy ? null : () => _cancel(journey),

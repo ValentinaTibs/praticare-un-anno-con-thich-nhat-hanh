@@ -10,6 +10,7 @@ import 'app_fakes.dart';
 
 const _status = '/api/sharing-channel/status';
 const _posts = '/api/sharing-channel/posts';
+const _leave = '/api/sharing-channel/leave';
 
 final _member = {
   ...userJson('user'),
@@ -47,7 +48,7 @@ Future<({ProviderContainer container, FakeHttp http})> openCircle(WidgetTester t
   addTearDown(container.dispose);
   await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const App()));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Condivisione'));
+  await tester.tap(find.text('Cerchio'));
   await tester.pumpAndSettle();
   return (container: container, http: http);
 }
@@ -69,7 +70,7 @@ void main() {
     });
 
     await tester.enterText(find.byType(TextField), 'Buongiorno a tutti');
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byTooltip('Invia'));
     await tester.pumpAndSettle();
 
     expect(find.text('Buongiorno a tutti'), findsOneWidget);
@@ -100,7 +101,7 @@ void main() {
     });
 
     await tester.enterText(find.byType(TextField), 'Non arriva');
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byTooltip('Invia'));
     await tester.pumpAndSettle();
 
     expect(find.text('Messaggio non inviato. Riprova.'), findsOneWidget);
@@ -130,7 +131,7 @@ void main() {
       _posts: (200, <Object>[]),
     });
 
-    expect(find.text('Chiude tra 10 minuti'), findsOneWidget);
+    expect(find.text('Chiude tra 10 minuti · i messaggi poi si cancellano'), findsOneWidget);
     await closeApp(tester, app);
   });
 
@@ -142,6 +143,36 @@ void main() {
     });
 
     expect(find.textContaining('Chiude tra'), findsNothing);
+    await closeApp(tester, app);
+  });
+
+  testWidgets('dice quante persone sono nel cerchio, non chi', (tester) async {
+    final app = await openCircle(tester, {
+      _status: (200, {..._openJoined, 'memberCount': 6}),
+      _posts: (200, <Object>[]),
+    });
+
+    expect(find.text('6 persone sono nel cerchio'), findsOneWidget);
+    await closeApp(tester, app);
+  });
+
+  testWidgets('la freccia indietro esce dal cerchio e torna alla home', (tester) async {
+    var joined = true;
+    final app = await openCircle(tester, {
+      _status: (RequestOptions _) => (200, {..._openJoined, 'joined': joined}),
+      _posts: (200, <Object>[]),
+      _leave: (RequestOptions _) {
+        joined = false;
+        return (200, {'left': true});
+      },
+    });
+
+    await tester.tap(find.byTooltip('Esci dal cerchio'));
+    await tester.pumpAndSettle();
+
+    expect(app.http.calls(_leave), 1);
+    expect(find.text('CANALE PRINCIPALE'), findsOneWidget);
+    expect(find.text('Il cerchio è aperto'), findsOneWidget);
     await closeApp(tester, app);
   });
 }

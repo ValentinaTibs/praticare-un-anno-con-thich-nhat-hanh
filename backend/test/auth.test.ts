@@ -43,7 +43,7 @@ describe('POST /api/auth/verify-firebase', () => {
       payload: { idToken: firebaseTokenFor(member.email) },
     });
 
-    expect(res.json().user.group).toMatchObject({ id: group.id, endedAt: null });
+    expect(res.json().user.group).toMatchObject({ id: group.id, endedAt: null, durationDays: 365 });
   });
 
   it('un utente attivo ottiene un token e legge il proprio profilo', async () => {

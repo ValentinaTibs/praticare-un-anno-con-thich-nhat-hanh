@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/constants.dart';
+import 'core/theme/lanterna_theme.dart';
 import 'core/widgets/session_unavailable.dart';
 import 'features/auth/auth_notifier.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -11,6 +12,7 @@ import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/verify_email_screen.dart';
 import 'features/main_channel/screens/main_channel_screen.dart';
 import 'features/main_channel/main_channel_notifier.dart';
+import 'features/sharing_channel/circle_status.dart';
 import 'features/sharing_channel/screens/sharing_channel_screen.dart';
 import 'features/waiting/next_journey.dart';
 import 'features/waiting/screens/waiting_screen.dart';
@@ -18,11 +20,6 @@ import 'features/profile/screens/profile_screen.dart';
 import 'features/admin/screens/admin_screen.dart';
 
 export 'core/locale.dart';
-
-final _theme = ThemeData(
-  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5C6BC0)),
-  useMaterial3: true,
-);
 
 const _waitingPath = '/home/waiting';
 
@@ -79,14 +76,14 @@ class App extends ConsumerWidget {
       final auth = ref.read(authProvider.notifier);
       return MaterialApp(
         title: AppConstants.appName,
-        theme: _theme,
+        theme: lanternaTheme,
         home: SessionUnavailable(onRetry: auth.retry, onLogout: auth.logout),
       );
     }
     final router = ref.watch(_routerProvider);
     return MaterialApp.router(
       title: AppConstants.appName,
-      theme: _theme,
+      theme: lanternaTheme,
       locale: const Locale('it', 'IT'),
       supportedLocales: const [Locale('it', 'IT')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -112,6 +109,7 @@ class _HomeShellState extends ConsumerState<_HomeShell> {
     ref.read(authProvider.notifier).refreshUser();
     ref.invalidate(nextJourneyProvider);
     ref.invalidate(mainChannelProvider);
+    ref.invalidate(circleStatusProvider);
   });
 
   @override
@@ -133,16 +131,16 @@ class _HomeShellState extends ConsumerState<_HomeShell> {
     final waiting = user?.isWaiting ?? false;
     final location = widget.location;
 
+    // Thin outlined icons in both states: the active tab is told by its amber colour.
     final tabs = [
       if (waiting)
-        (path: _waitingPath, icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home')
+        (path: _waitingPath, icon: Icons.home_outlined, label: 'Home')
       else ...[
-        (path: '/home/main-channel', icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
-        (path: '/home/sharing', icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Condivisione'),
+        (path: '/home/main-channel', icon: Icons.home_outlined, label: 'Home'),
+        (path: '/home/sharing', icon: Icons.chat_bubble_outline, label: 'Cerchio'),
       ],
-      (path: '/home/profile', icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profilo'),
-      if (isAdmin)
-        (path: '/home/admin', icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: 'Admin'),
+      (path: '/home/profile', icon: Icons.person_outline, label: 'Profilo'),
+      if (isAdmin) (path: '/home/admin', icon: Icons.admin_panel_settings_outlined, label: 'Admin'),
     ];
 
     final currentIndex = tabs.indexWhere((t) => location.startsWith(t.path));
@@ -155,7 +153,6 @@ class _HomeShellState extends ConsumerState<_HomeShell> {
         destinations: tabs
             .map((t) => NavigationDestination(
                   icon: Icon(t.icon),
-                  selectedIcon: Icon(t.activeIcon),
                   label: t.label,
                 ))
             .toList(),
