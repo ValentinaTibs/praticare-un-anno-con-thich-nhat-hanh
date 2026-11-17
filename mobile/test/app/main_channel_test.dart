@@ -16,29 +16,53 @@ final _member = {
 
 Map<String, dynamic> postJson(String id, String content) => {
       'id': id,
-      'author': null,
       'content': content,
       'publishedAt': '2099-01-01T07:00:00.000Z',
       'createdAt': '2099-01-01T07:00:00.000Z',
     };
 
+Future<void> pumpApp(WidgetTester tester, FakeHttp http) async {
+  final container = ProviderContainer(overrides: [
+    httpAdapterProvider.overrideWithValue(http),
+    tokenStorageProvider.overrideWithValue(FakeTokenStorage(access: 'a', refresh: 'r')),
+    pushServiceProvider.overrideWithValue(FakePush()),
+  ]);
+  addTearDown(container.dispose);
+  await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const App()));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUpAll(initItalianLocale);
 
+  testWidgets('il post mostra data e testo, senza autore', (tester) async {
+    final post = postJson('p1', 'Ascolta https://example.org/audio.mp3');
+    await pumpApp(tester, FakeHttp({
+      '/api/users/me': (200, _member),
+      _posts: (200, {'posts': [post], 'total': 1, 'page': 1, 'limit': 20}),
+    }));
+
+    expect(find.text('Ascolta https://example.org/audio.mp3'), findsOneWidget);
+    expect(find.textContaining('gennaio 2099'), findsOneWidget);
+    expect(find.byType(CircleAvatar), findsNothing);
+    expect(find.text('Utente eliminato'), findsNothing);
+  });
+
+  testWidgets('senza post il Canale Principale lo dice', (tester) async {
+    await pumpApp(tester, FakeHttp({
+      '/api/users/me': (200, _member),
+      _posts: (200, {'posts': [], 'total': 0, 'page': 1, 'limit': 20}),
+    }));
+
+    expect(find.text('Non ci sono ancora post.'), findsOneWidget);
+  });
+
   testWidgets('tornando sulla scheda il Canale Principale mostra i post pubblicati nel frattempo', (tester) async {
     var posts = [postJson('p1', 'Primo giorno del percorso')];
-    final http = FakeHttp({
+    await pumpApp(tester, FakeHttp({
       '/api/users/me': (200, _member),
       _posts: (RequestOptions _) => (200, {'posts': posts, 'total': posts.length, 'page': 1, 'limit': 20}),
-    });
-    final container = ProviderContainer(overrides: [
-      httpAdapterProvider.overrideWithValue(http),
-      tokenStorageProvider.overrideWithValue(FakeTokenStorage(access: 'a', refresh: 'r')),
-      pushServiceProvider.overrideWithValue(FakePush()),
-    ]);
-    addTearDown(container.dispose);
-    await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const App()));
-    await tester.pumpAndSettle();
+    }));
     expect(find.text('Primo giorno del percorso'), findsOneWidget);
 
     posts = [postJson('p2', 'Secondo giorno del percorso'), ...posts];

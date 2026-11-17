@@ -1,4 +1,18 @@
-import 'main_channel_post.dart';
+class PostAuthor {
+  final String id;
+  final String name;
+  final String surname;
+
+  const PostAuthor({required this.id, required this.name, required this.surname});
+
+  factory PostAuthor.fromJson(Map<String, dynamic> json) => PostAuthor(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        surname: json['surname'] as String,
+      );
+
+  String get fullName => '$name $surname';
+}
 
 class SharingChannelPost {
   final String id;

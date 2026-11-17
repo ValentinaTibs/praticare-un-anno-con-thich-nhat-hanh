@@ -10,7 +10,7 @@ import '../../../core/models/user.dart';
 import '../../../core/theme/lanterna_theme.dart';
 import '../../../core/widgets/error_retry.dart';
 import '../../../core/widgets/lanterna_marks.dart';
-import '../../../core/widgets/link_text.dart';
+import '../../../core/widgets/linked_text.dart';
 import '../../auth/auth_notifier.dart';
 import '../../daily_quote/daily_quote.dart';
 import '../../sharing_channel/circle_status.dart';
@@ -282,9 +282,9 @@ class _TimelinePost extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_when(post.publishedAt ?? post.createdAt), style: LanternaText.caption),
+              Text(_when(post.publishedAt), style: LanternaText.caption),
               const SizedBox(height: 6),
-              LinkText(post.content, style: Theme.of(context).textTheme.bodyMedium),
+              LinkedText(post.content, style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
         ),

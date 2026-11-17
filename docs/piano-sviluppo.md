@@ -80,7 +80,7 @@ Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile. Si pubbli
 ### Fase 4 — App mobile (settimane 1–7)
 - Accesso e registrazione con email e password, email verificata e informativa privacy.
 - Schermata "In attesa": frase del giorno, numero dei richiedenti, richiesta di partecipazione e suo annullamento.
-- Canale Principale del proprio gruppo, in sola lettura, con link cliccabili, senza autore e con la frase del giorno del percorso.
+- Canale Principale del proprio gruppo, in sola lettura, con link cliccabili, senza autore e con la frase del giorno del percorso. Fatto, tranne l'annuncio del cerchio (#16) e la frase del giorno.
 - Ingresso al cerchio dal post di annuncio, con il numero di partecipanti.
 - Conferma di appartenenza.
 - Schermate per utenti sospesi e bannati.
