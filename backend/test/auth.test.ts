@@ -23,11 +23,11 @@ function verifyFirebase(app: App, email: string, idToken = firebaseTokenFor(emai
   });
 }
 
-function register(app: App, email: string, idToken = firebaseTokenFor(email)) {
+function register(app: App, email: string, idToken = firebaseTokenFor(email), privacy: object = { privacyAccepted: true }) {
   return app.inject({
     method: 'POST',
     url: '/api/auth/register',
-    payload: { idToken, name: 'Anna', surname: 'Rossi', motivation: 'Crescere' },
+    payload: { idToken, name: 'Anna', surname: 'Rossi', motivation: 'Crescere', ...privacy },
   });
 }
 
@@ -121,6 +121,32 @@ describe('POST /api/auth/verify-firebase', () => {
 });
 
 describe('POST /api/auth/register', () => {
+  it('registra data e ora dell\'accettazione dell\'informativa privacy', async () => {
+    const app = await createTestApp();
+    const before = new Date();
+
+    const res = await register(app, 'anna@test.local');
+    expect(res.statusCode).toBe(201);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'anna@test.local' } });
+    expect(user.privacyAcceptedAt!.getTime()).toBeGreaterThanOrEqual(before.getTime());
+  });
+
+  for (const [reason, privacy] of [
+    ['senza accettazione', {}],
+    ['con l\'informativa rifiutata', { privacyAccepted: false }],
+  ] as const) {
+    it(`${reason} dell'informativa privacy la registrazione è rifiutata`, async () => {
+      const app = await createTestApp();
+
+      const res = await register(app, 'anna@test.local', firebaseTokenFor('anna@test.local'), privacy);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toBe("Per registrarti devi accettare l'informativa privacy.");
+      expect(await prisma.user.count({ where: { email: 'anna@test.local' } })).toBe(0);
+    });
+  }
+
   it('a ciclo chiuso la registrazione riesce e l\'utente può accedere', async () => {
     const app = await createTestApp();
 

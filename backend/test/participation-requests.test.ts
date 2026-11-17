@@ -273,7 +273,7 @@ describe('Uscita di un richiedente', () => {
     app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { idToken: firebaseTokenFor(email), name: 'Anna', surname: 'Bianchi', motivation: 'Ci riprovo' },
+      payload: { idToken: firebaseTokenFor(email), name: 'Anna', surname: 'Bianchi', motivation: 'Ci riprovo', privacyAccepted: true },
     });
 
   it('chi è rimosso con una richiesta si registra di nuovo, ma non può chiedere nello stesso ciclo', async () => {

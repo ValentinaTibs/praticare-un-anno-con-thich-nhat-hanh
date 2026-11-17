@@ -165,6 +165,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Registers the verified Firebase user with the backend, using a fresh ID token.
+  /// The user has accepted the privacy policy: the backend refuses anyone who hasn't.
   Future<AuthStep> register({
     required String name,
     required String surname,
@@ -177,6 +178,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'name': name,
         'surname': surname,
         'motivation': motivation,
+        'privacyAccepted': true,
       });
       await _startSession(data as Map<String, dynamic>);
       return AuthStep.loggedIn;

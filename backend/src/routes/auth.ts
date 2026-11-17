@@ -14,6 +14,7 @@ const registerBody = z.object({
   name: z.string().min(1),
   surname: z.string().min(1),
   motivation: z.string().min(1),
+  privacyAccepted: z.boolean().optional(),
 });
 const refreshBody = z.object({ refreshToken: z.string() });
 const deviceBody = z.object({ fcmToken: z.string() });
@@ -79,7 +80,10 @@ export async function authRoutes(app: FastifyInstance) {
 
   // POST /api/auth/register — new users, always open: they start as waiting users
   app.post('/register', async (request, reply) => {
-    const { idToken, name, surname, motivation } = registerBody.parse(request.body);
+    const { idToken, name, surname, motivation, privacyAccepted } = registerBody.parse(request.body);
+    if (privacyAccepted !== true) {
+      return reply.status(400).send({ message: "Per registrarti devi accettare l'informativa privacy." });
+    }
 
     const email = await emailFromToken(idToken, reply);
     if (!email) return reply;
@@ -96,7 +100,7 @@ export async function authRoutes(app: FastifyInstance) {
     if (existing) return reply.status(409).send({ message: 'Email già registrata' });
 
     const user = await prisma.user.create({
-      data: { email, name, surname, motivation, lastConfirmedAt: new Date() },
+      data: { email, name, surname, motivation, lastConfirmedAt: new Date(), privacyAcceptedAt: new Date() },
     });
 
     const { accessToken, refreshToken } = await issueTokens(app, user.id, user.role);

@@ -139,7 +139,7 @@ describe('Gestione utenti da parte degli admin', () => {
     const again = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { idToken: firebaseTokenFor(target.email), name: 'Anna', surname: 'Rossi', motivation: 'Ricominciare' },
+      payload: { idToken: firebaseTokenFor(target.email), name: 'Anna', surname: 'Rossi', motivation: 'Ricominciare', privacyAccepted: true },
     });
     expect(again.statusCode).toBe(201);
   });

@@ -180,6 +180,8 @@ flutter run --dart-define=API_URL=http://localhost:3000
 flutter run --dart-define=API_URL=http://192.168.1.10:3000
 ```
 
+L'indirizzo dell'informativa privacy, mostrato nella registrazione, si passa con `PRIVACY_POLICY_URL`. Se manca, l'app usa `https://laviadellatrasformazione.it/privacy`, un valore provvisorio finché la pagina non è pubblicata.
+
 ## Pannello web di amministrazione
 
 Il pannello è un'app Flutter Web che vive nel progetto `mobile/`, con un punto d'ingresso suo, `lib/main_panel.dart`. Riusa modelli e chiamate al backend dell'app (`lib/core/`), ma non le sue schermate. L'app mobile, a sua volta, non contiene il codice del pannello. Tutti i comandi si lanciano dalla cartella `mobile/`.

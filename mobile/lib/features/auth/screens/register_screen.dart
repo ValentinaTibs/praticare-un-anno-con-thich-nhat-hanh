@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants.dart';
 import '../auth_notifier.dart';
 
 /// Shown when the verified Firebase email is not yet known to the backend.
@@ -16,6 +18,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameCtr = TextEditingController();
   final _surnameCtr = TextEditingController();
   final _motivationCtr = TextEditingController();
+  bool _privacyAccepted = false;
   bool _loading = false;
   String? _error;
 
@@ -45,6 +48,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) setState(() => _error = authErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final opened = await launchUrl(Uri.parse(AppConstants.privacyPolicyUrl), mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossibile aprire l\'informativa. Riprova più tardi.')),
+      );
     }
   }
 
@@ -108,6 +120,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (v) => v == null || v.trim().isEmpty ? 'Campo obbligatorio' : null,
+                ),
+                const SizedBox(height: 16),
+                FormField<bool>(
+                  initialValue: _privacyAccepted,
+                  validator: (_) => _privacyAccepted ? null : 'Per registrarti devi accettare l\'informativa privacy.',
+                  builder: (field) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CheckboxListTile(
+                        value: _privacyAccepted,
+                        onChanged: (value) {
+                          setState(() => _privacyAccepted = value ?? false);
+                          field.didChange(value);
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Ho letto e accetto l\'informativa privacy'),
+                      ),
+                      TextButton.icon(
+                        onPressed: _openPrivacyPolicy,
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text('Leggi l\'informativa privacy'),
+                      ),
+                      if (field.hasError)
+                        Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    ],
+                  ),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 16),

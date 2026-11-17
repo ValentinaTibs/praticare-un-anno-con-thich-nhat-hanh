@@ -45,6 +45,9 @@ model User {
   status          UserStatus @default(active)
   reviewedByAdmin Boolean    @default(false) @map("reviewed_by_admin")
   lastConfirmedAt DateTime?  @map("last_confirmed_at")
+  // When the user accepted the privacy policy at registration. Accounts created otherwise,
+  // like the Super Admin's, have none.
+  privacyAcceptedAt DateTime? @map("privacy_accepted_at")
   groupId         String?    @map("group_id")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")

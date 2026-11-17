@@ -32,7 +32,7 @@
 - **Job pianificati:** node-cron
 
 ## 4. Registrazione e accesso
-- Registrazione con nome, cognome, email, password e motivazione.
+- Registrazione con nome, cognome, email, password e motivazione, e accettazione dell'informativa privacy (sezione 11).
 - Prima di entrare l'utente deve **confermare l'email** con il link che riceve.
 - La motivazione è utile sia al partecipante, come riflessione personale, sia agli admin, per conoscerlo.
 - La registrazione è **sempre aperta**. Chi si registra è un **utente in attesa** finché non partecipa a un percorso (sezione 5).
@@ -275,7 +275,7 @@ giorno;frase;fonte
 - Altri eventi, l'invio di email e l'orario della frase scelto da ogni utente sono rimandati alle release successive.
 
 ## 11. Privacy e dati personali
-- Alla registrazione l'utente deve **accettare un'informativa privacy**.
+- Alla registrazione l'utente deve **accettare un'informativa privacy**. Il backend registra data e ora dell'accettazione e rifiuta la registrazione senza.
 - L'informativa è pubblicata su una **pagina web** del sito laviadellatrasformazione.it. L'app mostra il link durante la registrazione.
 - Il testo è scritto e aggiornato dal **Super Admin direttamente sul sito**. Il pannello web non gestisce l'informativa.
 - Il progetto è un **gruppo informale**, non un ente. Il **titolare del trattamento** è quindi una persona fisica del gruppo, indicata nell'informativa con i suoi contatti.
@@ -360,7 +360,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Numero di partecipanti:** il codice mostra l'elenco membri solo agli admin e non espone il conteggio agli utenti.
 - **Cancellazione account:** non esiste una funzione per cancellare il proprio account.
 - **Account Firebase alla rimozione:** la rimozione da parte di un admin elimina l'utente dal database ma lascia il suo account di accesso in Firebase.
-- **Informativa privacy:** la registrazione non chiede di accettarla.
 - **Annuncio del cerchio nel Canale Principale:** il codice non crea un post di annuncio all'apertura del cerchio (#16). La push «Il cerchio è aperto» parte già.
 - **Modifica del profilo:** il codice permette di cambiare solo nome e cognome. Manca la motivazione.
 - **Pannello web di amministrazione:** esistono la struttura, l'accesso e le sezioni Utenti e gruppi, In attesa, Cicli e Cerchio. Utenti e gruppi ha gruppi e membri, ricerca, filtro dei non revisionati, motivazione, revisione, sospensione, riattivazione, ban, revoca del ban e rimozione. In attesa elenca gli utenti in attesa e i richiedenti del prossimo percorso, con la motivazione e il numero da revisionare. Cicli, riservata al Super Admin, apre e modifica il ciclo, chiude le richieste e mostra richiedenti o partecipanti. Cerchio ha la programmazione settimanale e la moderazione dei cerchi aperti. Le sezioni Canale Principale, Conferme, Frasi del giorno, Ruoli e Testi sono ancora vuote. Le schermate admin attuali sono ancora nell'app mobile (#27).

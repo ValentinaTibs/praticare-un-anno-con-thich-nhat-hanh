@@ -33,6 +33,7 @@ dependencies:
 
   # Utilities
   intl: ^0.20.2
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
