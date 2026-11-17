@@ -49,3 +49,13 @@ export function startOfDayInRome(date: string): Date | null {
   const offsetMinutes = (sign === '+' ? 1 : -1) * (Number(hours) * 60 + Number(minutes));
   return addMinutes(utcMidnight, -offsetMinutes);
 }
+
+const ROME_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' });
+
+// When a journey starting at 00:00 in Italy ends: 00:00 in Italy once its days have passed,
+// whatever clock change falls in between.
+export function journeyEndsAt(startsAt: Date, durationDays: number): Date {
+  const startDate = new Date(`${ROME_DATE.format(startsAt)}T00:00:00.000Z`);
+  startDate.setUTCDate(startDate.getUTCDate() + durationDays);
+  return startOfDayInRome(startDate.toISOString().slice(0, 10))!;
+}

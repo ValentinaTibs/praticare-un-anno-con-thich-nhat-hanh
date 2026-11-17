@@ -81,11 +81,11 @@
 - Per entrare nel gruppo serve la **revisione** di un admin: legge la motivazione e segna l'utente come revisionato. La revisione vale una volta sola: chi è già stato revisionato, ad esempio in un percorso precedente, non va revisionato di nuovo.
 - Gli admin vedono l'elenco dei richiedenti con la loro motivazione, distinguendo chi è da revisionare. Chi non va accolto si rimuove o si banna, come sempre.
 - Chi alla data di inizio non è ancora stato revisionato **non entra nel gruppo**: resta in attesa e la sua richiesta decade.
-- Chi viene **rimosso** da un admin mentre ha una richiesta in corso **non può chiedere di nuovo** di partecipare nello stesso ciclo, anche se si registra di nuovo con la stessa email. Potrà farlo dal ciclo successivo.
+- Chi viene **rimosso** da un admin mentre ha una richiesta in corso **non può chiedere di nuovo** di partecipare nello stesso ciclo, anche se si registra di nuovo con la stessa email. Potrà farlo dal ciclo successivo. Per questo la sua email resta registrata, solo fino alla data di inizio: quando il percorso comincia viene cancellata.
 - L'utente può **annullare** la richiesta fino alla data di inizio, e rifarla finché il ciclo è aperto.
 - Gli utenti in attesa vedono in app **quante persone** hanno chiesto di partecipare al prossimo percorso. Il numero si aggiorna, ma non parte una notifica a ogni nuova richiesta.
 - Si partecipa a **un percorso alla volta**: chi è in un gruppo attivo non può chiedere di partecipare al successivo. Chi ha già una richiesta in corso per un percorso non ancora iniziato deve annullarla prima di chiedere di partecipare a un altro.
-- Il **ban** cancella la richiesta in corso. Chi è **sospeso** la conserva, ma non viene contato tra i richiedenti.
+- Il **ban** cancella la richiesta in corso. Chi è **sospeso** la conserva, ma non viene contato tra i richiedenti. Se è ancora sospeso alla data di inizio non entra nel gruppo e la sua richiesta decade.
 
 ### Gruppi
 - Un **gruppo** è l'insieme delle persone che hanno chiesto di partecipare nello **stesso ciclo**.
@@ -351,7 +351,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti per ogni gruppo data di inizio e durata, con scadenza alle 23:59 dell'ultimo giorno, e che possa modificare o annullare il round finché non è iniziato.
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
 - **Già allineato:** i round di conferma escludono già admin e Super Admin.
-- **Nascita del gruppo:** il codice gestisce date e durata del ciclo e la loro modifica fino all'inizio, e il gruppo non nasce più all'apertura. Manca ancora la nascita del gruppo alla data di inizio (#92): finché non c'è, un nuovo ciclo non crea nessun gruppo.
 - **Già allineato:** il backend apre e chiude da solo il cerchio di ogni gruppo attivo secondo l'unico appuntamento settimanale, in ora italiana. Una modifica della programmazione vale dal primo appuntamento che inizia dopo la modifica, e un cerchio aperto finisce all'orario previsto. Non esistono più l'apertura manuale né la chiusura anticipata.
 - **Già allineato:** l'avviso di chiusura imminente arriva solo a chi è nel cerchio, una volta sola, e la cancellazione dei messaggi alla chiusura è già implementata.
 - **Già allineato:** nella sezione Cerchio del pannello gli admin impostano la programmazione e moderano i cerchi aperti di tutti i gruppi: membri e messaggi aggiornati ogni 10 secondi o con «Aggiorna», e «Cancella» su ogni messaggio. La scheda del cerchio nell'app mobile mostra solo lo stato.
@@ -371,9 +370,8 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
 - **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
-- **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti. Alla registrazione l'utente non entra più in un gruppo, ma il gruppo non nasce ancora alla data di inizio: per ora nessun nuovo utente entra in un gruppo (#92).
+- **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti.
 - **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. App e pannello gestiscono richieste di partecipazione, annullamento, conteggio ed elenco dei richiedenti. Nella schermata "In attesa" manca la frase del giorno (#83), e a ciclo chiuso il messaggio è ancora un testo fisso (#34).
-- **Revisione come approvazione:** il codice ha il campo `reviewedByAdmin`, ma non lo usa per decidere chi entra nel gruppo.
 - **Fine del gruppo:** il modello ha la data di fine, ma nessun job chiude il gruppo né riporta i membri in attesa. Per questo il pannello non mostra ancora gruppi archiviati.
 - **Frase del giorno:** non esistono gli elenchi delle frasi, l'import e l'export in CSV, il job delle 07:00 né l'interruttore nel profilo.
 - **Notifiche dei cicli:** il codice non avvisa gli utenti all'apertura di un ciclo né al cambio della data di inizio.
