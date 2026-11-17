@@ -105,6 +105,21 @@ Per accedere come Super Admin:
 1. Imposta le tre variabili e lancia lo script.
 2. Crea in Firebase un account con la stessa email e confermala. Il modo più semplice è dall'app: scegli *Crea un account* e apri il link che arriva via email. Gli account aggiunti a mano nella console Firebase, in *Authentication*, poi *Users*, nascono non verificati: al primo accesso dall'app si apre la schermata di conferma, tocca *Invia di nuovo* e apri il link.
 
+**Su Railway.** Il database non è raggiungibile da fuori, quindi lo script si lancia dentro il container del backend, via SSH. La prima volta registra la tua chiave SSH pubblica sull'account Railway, ad esempio indicandone l'impronta letta con `ssh-keygen -lf ~/.ssh/id_rsa.pub`:
+
+```bash
+railway ssh keys add --key <impronta> --name <nome>
+```
+
+Poi, dalla cartella `backend`, con l'ambiente giusto al posto di `prova`:
+
+```bash
+railway ssh --service backend --environment prova -- \
+  "cd /app && SUPER_ADMIN_EMAIL=... SUPER_ADMIN_NAME=... SUPER_ADMIN_SURNAME=... npx tsx prisma/seed.ts"
+```
+
+Le variabili valgono solo per quel comando, quindi non serve aggiungerle al servizio.
+
 ### Dati di prova (facoltativo)
 
 ```bash
