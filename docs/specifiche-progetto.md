@@ -368,7 +368,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Già allineato:** l'accesso usa email e password tramite Firebase, con email verificata obbligatoria, sia nel backend sia nell'app. Il modello utente ha il campo email e non ha più il numero di telefono.
 - **Già allineato:** l'accesso al pannello web usa email e password tramite Firebase ed è riservato ad admin e Super Admin. Le voci del Super Admin si vedono solo con quel ruolo.
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
-- **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
 - **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti.
 - **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. App e pannello gestiscono richieste di partecipazione, annullamento, conteggio ed elenco dei richiedenti. Nella schermata "In attesa" manca la frase del giorno (#83), e a ciclo chiuso il messaggio è ancora un testo fisso (#34).
 - **Già allineato:** il gruppo finisce da solo alla fine della durata, anche se il server era spento, e i membri tornano in attesa. Il cerchio rimasto aperto si chiude e gli ex membri non possono più entrarci. Il pannello mostra il gruppo tra quelli archiviati, con gli ex membri che non sono entrati in un percorso successivo: non c'è uno storico delle appartenenze.

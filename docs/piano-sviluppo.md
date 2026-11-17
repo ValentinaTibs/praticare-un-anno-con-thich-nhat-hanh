@@ -48,9 +48,9 @@ Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipend
 Va fatta per prima, perché tutto il resto dipende da qui.
 
 - **Riallineare l'accesso.** Fatto: l'app accede con email e password tramite Firebase e invia il token al backend. Il vecchio codice di Socket.IO è stato eliminato.
-- **Cicli.** Il Super Admin imposta data di chiusura delle richieste, data di inizio e durata del percorso. Il ciclo si chiude da solo e date e durata si possono modificare fino all'inizio. Nessun annullamento del ciclo nella prima release.
-- **Utente in attesa.** Fatto: la registrazione è sempre aperta e crea un utente senza gruppo e non revisionato. Resta da fare: mentre il ciclo è aperto l'utente chiede di partecipare o annulla la richiesta. Gli utenti in attesa vedono quanti sono i richiedenti.
-- **Gruppi.** Il gruppo nasce alla data di inizio con i richiedenti revisionati, e finisce dopo la durata impostata riportando i membri in attesa.
+- **Cicli.** Fatto: il Super Admin imposta data di chiusura delle richieste, data di inizio e durata del percorso. Il ciclo si chiude da solo e date e durata si possono modificare fino all'inizio. Nessun annullamento del ciclo nella prima release.
+- **Utente in attesa.** Fatto: la registrazione è sempre aperta e crea un utente senza gruppo e non revisionato. Mentre il ciclo è aperto l'utente chiede di partecipare o annulla la richiesta, e gli utenti in attesa vedono quanti sono i richiedenti.
+- **Gruppi.** Fatto: il gruppo nasce alla data di inizio con i richiedenti revisionati, e finisce dopo la durata impostata riportando i membri in attesa.
 - **Blocco temporaneo.** Fatto: eliminato. Chi è rimosso o cancella l'account può registrarsi di nuovo subito. Resta solo il ban.
 - **Registrazione.** Si aggiunge l'accettazione dell'informativa privacy. L'email c'è già, perché è anche il dato di accesso.
 
