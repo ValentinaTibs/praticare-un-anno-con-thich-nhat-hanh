@@ -201,7 +201,8 @@ _Evita_: chat, stanza, round del cerchio
 _Nel codice_: `SharingChannel`
 
 **Programmazione del cerchio**:
-Il giorno della settimana, l'orario e la durata fissa con cui il cerchio si apre e si chiude da solo.
+Il giorno della settimana, l'orario e la durata fissa con cui il cerchio si apre e si chiude da solo. È unica per tutti i gruppi e la sceglie un admin dal pannello; una modifica vale dal cerchio successivo.
+_Nel codice_: `SharingChannelSchedule`
 
 **Messaggio**:
 Il testo scritto da un partecipante nel cerchio, con nome e cognome di chi scrive.
