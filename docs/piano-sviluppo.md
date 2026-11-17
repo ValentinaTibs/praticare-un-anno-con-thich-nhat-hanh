@@ -60,7 +60,7 @@ Va fatta per prima, perché tutto il resto dipende da qui.
 - **Cerchio.** Un cerchio per gruppo, con un appuntamento settimanale comune: giorno, ora di inizio e durata. Apertura e chiusura automatiche, annuncio nel Canale Principale e push «Il cerchio è aperto». Messaggi solo testo. Elenco dei cerchi aperti di tutti i gruppi per la moderazione dal pannello. Al rientro si vedono solo i messaggi nuovi. Gli utenti vedono il numero di partecipanti. Si eliminano l'apertura e la chiusura manuali.
 - **Stati dell'utente.** Revoca del ban da parte del Super Admin. Fatto.
 - **Frase del giorno.** Elenchi delle frasi dell'anno e del percorso, con import da CSV validato ed export nello stesso formato. Job alle 07:00 che invia a ciascuno la frase giusta. Interruttore "Frase del giorno" nel profilo.
-- **Notifiche dei cicli.** Push agli utenti in attesa all'apertura del ciclo e ai richiedenti se cambia la data di inizio.
+- **Notifiche dei cicli.** Push agli utenti in attesa all'apertura del ciclo e ai richiedenti se cambia la data di inizio. Fatto.
 - **Cancellazione account.** L'utente cancella il proprio account dall'app. Viene eliminato anche il suo account di accesso in Firebase, come nella rimozione da parte di un admin.
 - **Testi.** Tutti i messaggi in italiano. Il Super Admin può modificare i testi per sospesi, bannati e ciclo chiuso.
 

@@ -35,3 +35,18 @@ describe('server senza chiave Firebase', () => {
     await expect(pushToUser(user.id, 'Titolo', 'Testo')).resolves.toBeUndefined();
   });
 });
+
+describe('notifiche push', () => {
+  it('oltre i 500 dispositivi l\'invio si divide in più richieste a Firebase', async () => {
+    const user = await givenUser();
+    await prisma.userDevice.createMany({
+      data: Array.from({ length: 501 }, (_, i) => ({ userId: user.id, fcmToken: `device-${i}` })),
+    });
+    vi.mocked(fcm.sendEachForMulticast).mockClear();
+
+    await pushToUser(user.id, 'Titolo', 'Testo');
+
+    const sizes = vi.mocked(fcm.sendEachForMulticast).mock.calls.map(([message]) => message.tokens.length);
+    expect(sizes).toEqual([500, 1]);
+  });
+});

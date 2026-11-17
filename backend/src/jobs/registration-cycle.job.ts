@@ -1,5 +1,5 @@
-import cron from 'node-cron';
 import { closeExpiredCycles, endDueGroups, startDueGroups } from '../services/cycle.service.js';
+import { scheduleJob } from './schedule.js';
 
 // Each step runs even if another failed; failures are logged, and the next run tries again.
 async function checkCycles() {
@@ -23,5 +23,5 @@ export function startRegistrationCycleJob() {
 
   // Every minute — close cycles at their closing date, end groups when their journey has passed,
   // create groups at their start date
-  cron.schedule('* * * * *', checkCycles);
+  scheduleJob('* * * * *', 'cycle check', checkCycles);
 }

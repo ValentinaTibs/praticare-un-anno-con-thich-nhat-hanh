@@ -59,3 +59,10 @@ export function journeyEndsAt(startsAt: Date, durationDays: number): Date {
   startDate.setUTCDate(startDate.getUTCDate() + durationDays);
   return startOfDayInRome(startDate.toISOString().slice(0, 10))!;
 }
+
+const ROME_DAY_AND_MONTH = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', day: 'numeric', month: 'long' });
+
+// The day and month in Italy at this instant, as written in Italian: "12 gennaio".
+export function dayAndMonthInRome(instant: Date): string {
+  return ROME_DAY_AND_MONTH.format(instant);
+}
