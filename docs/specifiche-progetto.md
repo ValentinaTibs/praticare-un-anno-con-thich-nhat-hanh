@@ -350,7 +350,7 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 ## 15. Differenze tra specifiche e codice attuale
 - **Scadenze delle conferme:** nel codice sono fisse da configurazione server, 30 giorni di intervallo e 3 di tolleranza. Le specifiche chiedono che un admin imposti per ogni gruppo data di inizio e durata, con scadenza alle 23:59 dell'ultimo giorno, e che possa modificare o annullare il round finché non è iniziato.
 - **Promemoria delle conferme:** il codice invia una sola notifica alla creazione della richiesta. Mancano i due promemoria.
-- **Già allineato:** i round di conferma escludono già admin e Super Admin.
+- **Già allineato:** i round di conferma escludono già admin e Super Admin, e anche gli utenti in attesa, compresi gli ex membri di un gruppo finito. A fine percorso una conferma rimasta in sospeso decade.
 - **Già allineato:** il backend apre e chiude da solo il cerchio di ogni gruppo attivo secondo l'unico appuntamento settimanale, in ora italiana. Una modifica della programmazione vale dal primo appuntamento che inizia dopo la modifica, e un cerchio aperto finisce all'orario previsto. Non esistono più l'apertura manuale né la chiusura anticipata.
 - **Già allineato:** l'avviso di chiusura imminente arriva solo a chi è nel cerchio, una volta sola, e la cancellazione dei messaggi alla chiusura è già implementata.
 - **Già allineato:** nella sezione Cerchio del pannello gli admin impostano la programmazione e moderano i cerchi aperti di tutti i gruppi: membri e messaggi aggiornati ogni 10 secondi o con «Aggiorna», e «Cancella» su ogni messaggio. La scheda del cerchio nell'app mobile mostra solo lo stato.
