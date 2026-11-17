@@ -12,19 +12,21 @@ class CircleSchedule {
 
   /// HH:MM in Italian time.
   final String startTime;
-  final int durationMinutes;
+  /// Whole hours.
+  final int durationHours;
 
-  const CircleSchedule({required this.dayOfWeek, required this.startTime, required this.durationMinutes});
+  const CircleSchedule({required this.dayOfWeek, required this.startTime, required this.durationHours});
 
   factory CircleSchedule.fromJson(Map<String, dynamic> json) => CircleSchedule(
         dayOfWeek: json['dayOfWeek'] as int,
         startTime: json['startTime'] as String,
-        durationMinutes: json['durationMinutes'] as int,
+        durationHours: json['durationHours'] as int,
       );
 
-  Map<String, dynamic> toJson() => {'dayOfWeek': dayOfWeek, 'startTime': startTime, 'durationMinutes': durationMinutes};
+  Map<String, dynamic> toJson() => {'dayOfWeek': dayOfWeek, 'startTime': startTime, 'durationHours': durationHours};
 
-  String get description => 'Ogni ${weekdayNames[dayOfWeek - 1]} alle $startTime, per $durationMinutes minuti';
+  String get description =>
+      'Ogni ${weekdayNames[dayOfWeek - 1]} alle $startTime, per ${durationHours == 1 ? 'un\'ora' : '$durationHours ore'}';
 }
 
 /// A group's circle while it is open, as the open circles list shows it.

@@ -6,7 +6,7 @@ import { runSharingChannelTick } from '../src/services/sharing-channel.service.j
 type App = Awaited<ReturnType<typeof createTestApp>>;
 type Headers = { authorization: string };
 
-const saturdayAtNine = { dayOfWeek: 6, startTime: '09:00', durationMinutes: 60 };
+const saturdayAtNine = { dayOfWeek: 6, startTime: '09:00', durationHours: 1 };
 
 const saveSchedule = (app: App, headers: Headers, payload: object) =>
   app.inject({ method: 'PUT', url: '/api/sharing-channel/schedule', headers, payload });
@@ -41,6 +41,15 @@ describe('Programmazione del cerchio', () => {
 
     const read = await readSchedule(app, admin);
     expect(read.json()).toMatchObject(saturdayAtNine);
+  });
+
+  it('la durata è in ore intere: un\'ora e mezza viene rifiutata', async () => {
+    const app = await createTestApp();
+    const admin = await loginAs(app, await givenAdmin());
+
+    const saved = await saveSchedule(app, admin, { ...saturdayAtNine, durationHours: 1.5 });
+
+    expect(saved.statusCode).toBe(400);
   });
 });
 
@@ -205,16 +214,16 @@ describe('Cambio di programmazione', () => {
   it('se la programmazione cambia a cerchio aperto, il cerchio finisce all\'orario previsto', async () => {
     const app = await createTestApp();
     const member = await loginAs(app, await givenMember(await givenGroup()));
-    await saveScheduleAt(app, '2030-01-01T08:00:00.000Z', saturdayAtNine);
+    await saveScheduleAt(app, '2030-01-01T08:00:00.000Z', { ...saturdayAtNine, durationHours: 2 });
     await runSharingChannelTick(new Date('2030-01-05T08:00:00.000Z'));
 
-    // At 09:15 the appointment becomes half an hour long
-    await saveScheduleAt(app, '2030-01-05T08:15:00.000Z', { ...saturdayAtNine, durationMinutes: 30 });
+    // At 09:15 the appointment becomes one hour long
+    await saveScheduleAt(app, '2030-01-05T08:15:00.000Z', saturdayAtNine);
 
-    await runSharingChannelTick(new Date('2030-01-05T08:45:00.000Z'));
+    await runSharingChannelTick(new Date('2030-01-05T09:30:00.000Z'));
     expect((await readStatus(app, member)).json()).toMatchObject({
       status: 'open',
-      scheduledClosedAt: '2030-01-05T09:00:00.000Z',
+      scheduledClosedAt: '2030-01-05T10:00:00.000Z',
     });
   });
 });

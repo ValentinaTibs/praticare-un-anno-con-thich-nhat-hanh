@@ -296,7 +296,7 @@ class _ScheduleFormState extends ConsumerState<_ScheduleForm> {
     super.initState();
     _dayOfWeek = widget.schedule?.dayOfWeek;
     _startTime = widget.schedule?.startTime;
-    _duration = TextEditingController(text: widget.schedule?.durationMinutes.toString() ?? '');
+    _duration = TextEditingController(text: widget.schedule?.durationHours.toString() ?? '');
   }
 
   @override
@@ -321,7 +321,7 @@ class _ScheduleFormState extends ConsumerState<_ScheduleForm> {
   String? _missing(int? duration) {
     if (_dayOfWeek == null) return 'Scegli il giorno della settimana.';
     if (_startTime == null) return 'Scegli l\'ora di inizio.';
-    if (duration == null || duration <= 0) return 'Indica la durata in minuti.';
+    if (duration == null || duration <= 0) return 'Indica la durata in ore intere.';
     return null;
   }
 
@@ -330,7 +330,7 @@ class _ScheduleFormState extends ConsumerState<_ScheduleForm> {
     final missing = _missing(duration);
     if (missing != null) return setState(() => _error = missing);
 
-    final schedule = CircleSchedule(dayOfWeek: _dayOfWeek!, startTime: _startTime!, durationMinutes: duration!);
+    final schedule = CircleSchedule(dayOfWeek: _dayOfWeek!, startTime: _startTime!, durationHours: duration!);
     setState(() {
       _error = null;
       _saving = true;
@@ -377,7 +377,7 @@ class _ScheduleFormState extends ConsumerState<_ScheduleForm> {
               child: TextField(
                 controller: _duration,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Durata in minuti'),
+                decoration: const InputDecoration(labelText: 'Durata in ore'),
               ),
             ),
             FilledButton(onPressed: _saving ? null : _save, child: const Text('Salva')),

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'fakes.dart';
 import 'pump_panel.dart';
 
-const saturdayAtNine = {'dayOfWeek': 6, 'startTime': '09:00', 'durationMinutes': 60};
+const saturdayAtNine = {'dayOfWeek': 6, 'startTime': '09:00', 'durationHours': 1};
 
 Future<FakeApiClient> openCirclePage(WidgetTester tester, Map<String, Object> responses) async {
   final container = await pumpPanel(tester, role: 'admin', responses: {
@@ -23,7 +23,7 @@ void main() {
   group('programmazione', () {
     testWidgets('mostra l\'appuntamento settimanale', (tester) async {
       await openCirclePage(tester, {'/api/sharing-channel/schedule': saturdayAtNine});
-      expect(find.text('Ogni sabato alle 09:00, per 60 minuti'), findsOneWidget);
+      expect(find.text('Ogni sabato alle 09:00, per un\'ora'), findsOneWidget);
     });
 
     testWidgets('senza programmazione dice che il cerchio non si apre', (tester) async {
@@ -53,13 +53,23 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('domenica').last);
       await tester.pumpAndSettle();
-      await tester.enterText(find.widgetWithText(TextField, 'Durata in minuti'), '45');
+      await tester.enterText(find.widgetWithText(TextField, 'Durata in ore'), '2');
       await tester.tap(find.text('Salva'));
       await tester.pumpAndSettle();
 
       expect(api.calls, contains('PUT /api/sharing-channel/schedule'));
-      expect(api.bodies.last, {'dayOfWeek': 7, 'startTime': '09:00', 'durationMinutes': 45});
-      expect(find.text('Ogni domenica alle 09:00, per 45 minuti'), findsOneWidget);
+      expect(api.bodies.last, {'dayOfWeek': 7, 'startTime': '09:00', 'durationHours': 2});
+      expect(find.text('Ogni domenica alle 09:00, per 2 ore'), findsOneWidget);
+    });
+
+    testWidgets('una durata che non è in ore intere non arriva al backend', (tester) async {
+      final api = await openCirclePage(tester, {'/api/sharing-channel/schedule': saturdayAtNine});
+      await tester.enterText(find.widgetWithText(TextField, 'Durata in ore'), '1,5');
+      await tester.tap(find.text('Salva'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Indica la durata in ore intere.'), findsOneWidget);
+      expect(api.calls, isNot(contains('PUT /api/sharing-channel/schedule')));
     });
   });
 

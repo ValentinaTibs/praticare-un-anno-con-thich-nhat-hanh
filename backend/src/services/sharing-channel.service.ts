@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma.js';
 import { pushToChannelMembers, pushToGroup } from './push.service.js';
 import { addMinutes, calendarDateInRome, wallTimeInRome } from '../utils/date.js';
 
-type Schedule = { dayOfWeek: number; startTime: string; durationMinutes: number };
+type Schedule = { dayOfWeek: number; startTime: string; durationHours: number };
 
 // ISO day of the week of a YYYY-MM-DD calendar date: 1 = Monday … 7 = Sunday.
 function isoDayOfWeek(date: string) {
@@ -33,7 +33,7 @@ async function openDueChannels(now: Date) {
   if (!schedule) return;
 
   const opensAt = latestAppointmentStart(schedule, now);
-  const closesAt = addMinutes(opensAt, schedule.durationMinutes);
+  const closesAt = addMinutes(opensAt, schedule.durationHours * 60);
   // A change of schedule counts from the next appointment: never open late.
   if (opensAt <= schedule.updatedAt || now >= closesAt) return;
 

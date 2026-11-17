@@ -13,10 +13,10 @@ const postBody = z.object({
 const scheduleBody = z.object({
   dayOfWeek: z.number().int().min(1).max(7),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  durationMinutes: z.number().int().positive(),
+  durationHours: z.number().int().positive(),
 });
 
-const scheduleFields = { dayOfWeek: true, startTime: true, durationMinutes: true } as const;
+const scheduleFields = { dayOfWeek: true, startTime: true, durationHours: true } as const;
 
 const ROLES_ACROSS_GROUPS = ['admin', 'super_admin'];
 

@@ -200,7 +200,7 @@ ATTIVO o SOSPESO ──(rimozione admin / cancellazione utente)──► account
 - Funziona come un **cerchio di condivisione**: i partecipanti inviano messaggi al gruppo.
 - Ha un orario di apertura e uno di chiusura. I messaggi sono visibili solo mentre il canale è aperto.
 - **Ogni gruppo ha il proprio cerchio.** Nella prima release tutti i cerchi seguono la **stessa programmazione**.
-- Un admin imposta **un solo appuntamento settimanale**: giorno della settimana, ora di inizio e durata, in ora italiana. Ad esempio ogni sabato alle 9:00 per un'ora. Il cerchio si apre e si chiude automaticamente.
+- Un admin imposta **un solo appuntamento settimanale**: giorno della settimana, ora di inizio e durata in ore intere, in ora italiana. Ad esempio ogni sabato alle 9:00 per un'ora. Il cerchio si apre e si chiude automaticamente.
 - Se la programmazione cambia mentre un cerchio è aperto, quel cerchio finisce all'orario previsto. La modifica vale dal cerchio successivo.
 - Non esistono cerchi straordinari fuori programma e non si possono saltare singole date.
 - I messaggi sono **solo testo**. Una volta inviati non si possono modificare né cancellare da chi li ha scritti.
