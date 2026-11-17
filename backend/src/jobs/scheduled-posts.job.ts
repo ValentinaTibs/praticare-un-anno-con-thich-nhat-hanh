@@ -1,9 +1,9 @@
-import cron from 'node-cron';
 import { prisma } from '../config/prisma.js';
 import { pushToAll } from '../services/push.service.js';
+import { scheduleJob } from './schedule.js';
 
 export function startScheduledPostsJob() {
-  cron.schedule('* * * * *', async () => {
+  scheduleJob('* * * * *', 'scheduled posts', async () => {
     const due = await prisma.mainChannelPost.findMany({
       where: {
         scheduledAt: { lte: new Date() },

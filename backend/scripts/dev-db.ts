@@ -31,8 +31,8 @@ async function main() {
     await pg.stop();
     process.exit(0);
   };
-  process.on('SIGINT', stop);
-  process.on('SIGTERM', stop);
+  process.on('SIGINT', () => void stop());
+  process.on('SIGTERM', () => void stop());
 }
 
 main().catch((err) => {

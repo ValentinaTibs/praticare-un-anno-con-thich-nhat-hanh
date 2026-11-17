@@ -13,7 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx --env-file=.env prisma/seed.ts",
     "db:seed:mock": "tsx --env-file=.env scripts/seed-mock.ts",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
@@ -33,12 +33,15 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^20.14.2",
     "@types/node-cron": "^3.0.11",
     "@vitest/coverage-v8": "^1.6.0",
     "embedded-postgres": "17.5.0-beta.15",
+    "eslint": "^10.15.0",
     "tsx": "^4.15.1",
     "typescript": "^5.4.5",
+    "typescript-eslint": "^8.73.0",
     "vitest": "^1.6.0"
   },
   "engines": {
