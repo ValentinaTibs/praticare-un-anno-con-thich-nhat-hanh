@@ -51,9 +51,13 @@ class SharingChannelState {
 }
 
 class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
+  /// How often the screen reloads the circle: the backend sends no live updates.
+  static const refreshInterval = Duration(seconds: 10);
+
   final ApiClient _api;
   final SocketService _socket;
   final List<StreamSubscription> _subs = [];
+  late final Timer _refresh;
 
   SharingChannelNotifier(this._api, this._socket) : super(const SharingChannelState()) {
     _subs.addAll([
@@ -64,11 +68,14 @@ class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
       _socket.onSharingClosingSoon.listen(_onClosingSoon),
     ]);
     _fetchStatus();
+    // Opening, closing, other members' messages and deletions show up here.
+    _refresh = Timer.periodic(refreshInterval, (_) => _fetchStatus());
   }
 
   Future<void> _fetchStatus() async {
     try {
       final data = await _api.get('/api/sharing-channel/status');
+      if (!mounted) return;
       final d = data as Map<String, dynamic>;
       if (d['status'] == 'closed') {
         state = const SharingChannelState(phase: SharingChannelPhase.closed);
@@ -92,6 +99,7 @@ class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
     final posts = (data as List)
         .map((e) => SharingChannelPost.fromJson(e as Map<String, dynamic>))
         .toList();
+    if (!mounted) return;
     state = state.copyWith(posts: posts);
     _socket.subscribeToSharingChannel(channelId);
   }
@@ -115,9 +123,10 @@ class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
     }
   }
 
+  /// The sent message shows up at once, from the backend's answer.
   Future<void> sendPost(String content) async {
-    await _api.post('/api/sharing-channel/posts', data: {'content': content});
-    // Post will arrive via socket
+    final data = await _api.post('/api/sharing-channel/posts', data: {'content': content});
+    _onNewPost(SharingChannelPost.fromJson(data as Map<String, dynamic>));
   }
 
   void _onOpened(SharingChannelStatus status) {
@@ -149,12 +158,14 @@ class SharingChannelNotifier extends StateNotifier<SharingChannelState> {
 
   @override
   void dispose() {
+    _refresh.cancel();
     for (final s in _subs) s.cancel();
     super.dispose();
   }
 }
 
+// Disposed when the screen closes, so the circle is reloaded only while someone looks at it.
 final sharingChannelProvider =
-    StateNotifierProvider<SharingChannelNotifier, SharingChannelState>((ref) {
+    StateNotifierProvider.autoDispose<SharingChannelNotifier, SharingChannelState>((ref) {
   return SharingChannelNotifier(ref.watch(apiClientProvider), ref.watch(socketServiceProvider));
 });

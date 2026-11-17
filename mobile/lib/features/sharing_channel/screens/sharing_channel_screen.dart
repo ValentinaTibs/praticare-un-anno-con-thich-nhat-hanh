@@ -42,7 +42,13 @@ class _SharingChannelScreenState extends ConsumerState<SharingChannelScreen> {
     try {
       await ref.read(sharingChannelProvider.notifier).sendPost(text);
       _scrollToBottom();
-    } catch (_) {}
+    } catch (_) {
+      // Give the text back, so nothing written is lost.
+      if (_ctrl.text.isEmpty) _ctrl.text = text;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Messaggio non inviato. Riprova.')));
+      }
+    }
   }
 
   @override
