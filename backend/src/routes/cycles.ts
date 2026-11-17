@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { prisma } from '../config/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-import { closeExpiredCycles, findOpenCycle } from '../services/cycle.service.js';
+import {
+  closeExpiredCycles,
+  findOpenCycle,
+  notifyCycleOpened,
+  notifyStartDateChanged,
+} from '../services/cycle.service.js';
 import { startOfDayInRome } from '../utils/date.js';
 
 const DEFAULT_DURATION_DAYS = 365;
@@ -100,6 +105,9 @@ export async function cycleRoutes(app: FastifyInstance) {
         },
       });
 
+      // The cycle is saved: a push that fails must not make the Super Admin think otherwise.
+      await notifyCycleOpened(cycle).catch((error) => request.log.error(error, 'Cycle opening push not sent'));
+
       return reply.status(201).send(cycle);
     } catch (error) {
       if (isOpenCycleConflict(error)) return reply.status(409).send({ message: ALREADY_OPEN });
@@ -150,6 +158,13 @@ export async function cycleRoutes(app: FastifyInstance) {
           ...(reopening && { status: 'open' as const, closedAt: null }),
         },
       });
+
+      // Resending the same date, as a form would, is not a change
+      if (updated.startsAt.getTime() !== cycle.startsAt.getTime()) {
+        await notifyStartDateChanged(updated, cycle.startsAt).catch((error) =>
+          request.log.error(error, 'Start date change push not sent'),
+        );
+      }
 
       return reply.send(updated);
     } catch (error) {

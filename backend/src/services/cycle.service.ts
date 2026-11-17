@@ -1,6 +1,27 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
-import { journeyEndsAt } from '../utils/date.js';
+import { dayAndMonthInRome, journeyEndsAt } from '../utils/date.js';
+import { pushToCycleRequesters, pushToWaitingUsers } from './push.service.js';
+
+type Cycle = { id: string; startsAt: Date };
+
+export async function notifyCycleOpened(cycle: Cycle) {
+  await pushToWaitingUsers(
+    'Nuovo percorso',
+    `Sono aperte le richieste per il percorso che inizia il ${dayAndMonthInRome(cycle.startsAt)}`,
+    { type: 'cycle:opened', cycleId: cycle.id },
+  );
+}
+
+export async function notifyStartDateChanged(cycle: Cycle, previousStartsAt: Date) {
+  await pushToCycleRequesters(
+    cycle.id,
+    'Nuova data di inizio',
+    `Il percorso a cui hai chiesto di partecipare inizierà il ${dayAndMonthInRome(cycle.startsAt)}` +
+      ` invece del ${dayAndMonthInRome(previousStartsAt)}`,
+    { type: 'cycle:start_date_changed', cycleId: cycle.id },
+  );
+}
 
 // A cycle past its closing date counts as closed even before the job marks it,
 // so requests stop exactly at the date the Super Admin set.

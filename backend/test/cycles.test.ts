@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fcm } from '../src/config/firebase.js';
 import { prisma } from '../src/config/prisma.js';
 import { closeExpiredCycles } from '../src/services/cycle.service.js';
 import { startOfDayInRome } from '../src/utils/date.js';
@@ -371,5 +372,143 @@ describe('Cicli', () => {
       { id: upcoming.id, requesters: 2, participants: 0 },
       { id: group.cycleId, requesters: 0, participants: 1 },
     ]);
+  });
+});
+
+// A phone of this user, identified by its push token.
+const givenPhone = (user: { id: string }, fcmToken: string) =>
+  prisma.userDevice.create({ data: { userId: user.id, fcmToken } });
+
+const givenRequester = async (cycle: { id: string }, overrides: Parameters<typeof givenUser>[0] = {}) => {
+  const user = await givenUser(overrides);
+  await prisma.participationRequest.create({ data: { cycleId: cycle.id, userId: user.id } });
+  return user;
+};
+
+// The texts of the push notifications Firebase was asked to deliver to this device.
+const pushesReceivedBy = (fcmToken: string) =>
+  vi
+    .mocked(fcm.sendEachForMulticast)
+    .mock.calls.filter(([message]) => message.tokens.includes(fcmToken))
+    .map(([message]) => message.notification?.body);
+
+describe('Notifiche dei cicli', () => {
+  const OPENED = 'Sono aperte le richieste per il percorso che inizia il 12 gennaio';
+  const MOVED = 'Il percorso a cui hai chiesto di partecipare inizierà il 19 gennaio invece del 12 gennaio';
+
+  beforeEach(() => {
+    vi.mocked(fcm.sendEachForMulticast).mockClear();
+  });
+
+  it('all\'apertura del ciclo gli utenti in attesa ricevono la data di inizio del percorso', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    await givenPhone(await givenUser(), 'phone-of-new-user');
+    await givenPhone(await givenAdmin(), 'phone-of-waiting-admin');
+    const endedGroup = await givenGroup();
+    await prisma.group.update({ where: { id: endedGroup.id }, data: { endedAt: new Date() } });
+    await givenPhone(await givenMember(endedGroup), 'phone-of-former-member');
+
+    const res = await openCycle(app, headers, { startDate: '2099-01-12' });
+
+    expect(res.statusCode).toBe(201);
+    expect(pushesReceivedBy('phone-of-new-user')).toEqual([OPENED]);
+    expect(pushesReceivedBy('phone-of-waiting-admin')).toEqual([OPENED]);
+    expect(pushesReceivedBy('phone-of-former-member')).toEqual([OPENED]);
+  });
+
+  it('all\'apertura del ciclo non ricevono nulla i membri di un gruppo in corso, i sospesi e i bannati', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    await givenPhone(await givenMember(await givenGroup()), 'phone-of-member');
+    await givenPhone(await givenUser({ status: 'suspended' }), 'phone-of-suspended');
+    await givenPhone(await givenUser({ status: 'banned' }), 'phone-of-banned');
+
+    await openCycle(app, headers, { startDate: '2099-01-12' });
+
+    expect(pushesReceivedBy('phone-of-member')).toEqual([]);
+    expect(pushesReceivedBy('phone-of-suspended')).toEqual([]);
+    expect(pushesReceivedBy('phone-of-banned')).toEqual([]);
+  });
+
+  it('un ciclo che non si apre non manda notifiche', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    await givenOpenCycle();
+    await givenPhone(await givenUser(), 'phone-of-new-user');
+
+    const res = await openCycle(app, headers, { startDate: '2099-01-12' });
+
+    expect(res.statusCode).toBe(409);
+    expect(pushesReceivedBy('phone-of-new-user')).toEqual([]);
+  });
+
+  it('se la push non parte il ciclo si apre lo stesso', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    await givenPhone(await givenUser(), 'phone-of-new-user');
+    vi.mocked(fcm.sendEachForMulticast).mockRejectedValueOnce(new Error('Firebase non raggiungibile'));
+
+    const res = await openCycle(app, headers, { startDate: '2099-01-12' });
+
+    expect(res.statusCode).toBe(201);
+    expect(await cycleStatus(app, headers)).toMatchObject({ open: true });
+  });
+
+  it('se cambia la data di inizio i richiedenti ricevono la nuova data', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    const { id } = (await openCycle(app, headers, { startDate: '2099-01-12' })).json();
+    const cycle = { id };
+    await givenPhone(await givenRequester(cycle), 'phone-of-requester');
+    await givenPhone(await givenUser(), 'phone-of-waiting-user');
+    await givenPhone(await givenRequester(cycle, { status: 'suspended' }), 'phone-of-suspended-requester');
+    vi.mocked(fcm.sendEachForMulticast).mockClear();
+
+    const res = await updateCycle(app, headers, id, { startDate: '2099-01-19' });
+
+    expect(res.statusCode).toBe(200);
+    expect(pushesReceivedBy('phone-of-requester')).toEqual([MOVED]);
+    expect(pushesReceivedBy('phone-of-waiting-user')).toEqual([]);
+    expect(pushesReceivedBy('phone-of-suspended-requester')).toEqual([]);
+  });
+
+  it('chi ha chiesto di partecipare a un altro percorso non riceve il cambio di data', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    const { id } = (await openCycle(app, headers, { startDate: '2099-01-12' })).json();
+    await app.inject({ method: 'POST', url: '/api/cycles/close', headers });
+    const other = await givenOpenCycle(inDays(7), startOfDayInRome('2099-02-01')!);
+    await givenPhone(await givenRequester(other), 'phone-of-other-requester');
+
+    await updateCycle(app, headers, id, { startDate: '2099-01-19' });
+
+    expect(pushesReceivedBy('phone-of-other-requester')).toEqual([]);
+  });
+
+  it('se la data di inizio resta la stessa i richiedenti non ricevono nulla', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    const { id } = (await openCycle(app, headers, { startDate: '2099-01-12' })).json();
+    await givenPhone(await givenRequester({ id }), 'phone-of-requester');
+    vi.mocked(fcm.sendEachForMulticast).mockClear();
+
+    await updateCycle(app, headers, id, { startDate: '2099-01-12', durationDays: 30 });
+    await updateCycle(app, headers, id, { scheduledClosedAt: inDays(10).toISOString() });
+
+    expect(pushesReceivedBy('phone-of-requester')).toEqual([]);
+  });
+
+  it('se la push non parte la nuova data di inizio resta salvata', async () => {
+    const app = await createTestApp();
+    const headers = await superAdmin(app);
+    const { id } = (await openCycle(app, headers, { startDate: '2099-01-12' })).json();
+    await givenPhone(await givenRequester({ id }), 'phone-of-requester');
+    vi.mocked(fcm.sendEachForMulticast).mockRejectedValueOnce(new Error('Firebase non raggiungibile'));
+
+    const res = await updateCycle(app, headers, id, { startDate: '2099-01-19' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ startsAt: startOfDayInRome('2099-01-19')!.toISOString() });
   });
 });
