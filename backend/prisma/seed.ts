@@ -1,42 +1,28 @@
-import { PrismaClient, Role, UserStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { seedSuperAdmin, superAdminFromEnv } from '../scripts/super-admin.js';
 
 const prisma = new PrismaClient();
 
-// Placeholder: a verified Firebase account with this email is needed to log in.
-const SUPER_ADMIN_EMAIL = 'superadmin@example.com';
+const messages = {
+  created: 'Super Admin creato',
+  updated: 'Super Admin aggiornato: l\'email segnaposto è stata sostituita',
+  unchanged: 'Super Admin già presente',
+} as const;
 
 async function main() {
-  // There is only one Super Admin. A database migrated from phone login already has
-  // one, with the placeholder email 'user-<id>@invalid.local': give it the seed email
-  // instead of creating a second Super Admin.
-  const existing = await prisma.user.findFirst({ where: { role: Role.super_admin } });
-  if (existing) {
-    if (existing.email.endsWith('@invalid.local')) {
-      await prisma.user.update({ where: { id: existing.id }, data: { email: SUPER_ADMIN_EMAIL } });
-    }
-    console.log('Super admin already present:', existing.id);
+  const data = superAdminFromEnv(process.env);
+  const result = await seedSuperAdmin(prisma, data);
+
+  if (result.outcome === 'other_super_admin') {
+    console.log(`C'è già un Super Admin con l'email ${result.email}: lo script non lo modifica.`);
     return;
   }
-
-  const superAdmin = await prisma.user.create({
-    data: {
-      name: 'Super',
-      surname: 'Admin',
-      email: SUPER_ADMIN_EMAIL,
-      motivation: 'System seed',
-      role: Role.super_admin,
-      status: UserStatus.active,
-      reviewedByAdmin: true,
-      lastConfirmedAt: new Date(),
-    },
-  });
-
-  console.log('Seeded super admin:', superAdmin.id);
+  console.log(`${messages[result.outcome]}: ${data.email} (${result.id})`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
   })
   .finally(() => prisma.$disconnect());

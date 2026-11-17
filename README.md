@@ -59,6 +59,7 @@ Poi modifica `.env`:
 | `JWT_SECRET` | Una stringa casuale di almeno 32 caratteri, ad esempio generata con `openssl rand -hex 32` |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | La chiave di servizio Firebase su una sola riga. Obbligatoria solo in produzione. Vedi sotto |
 | `ADMIN_CONTACT_EMAIL` | L'email di contatto mostrata agli utenti bloccati |
+| `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_NAME`, `SUPER_ADMIN_SURNAME` | Email, nome e cognome del Super Admin, usati da `npm run db:seed`. L'email deve essere una casella vera: serve per accedere |
 
 Le altre variabili hanno già valori adatti allo sviluppo.
 
@@ -94,9 +95,14 @@ Lo stesso comando crea una nuova migrazione quando cambia `prisma/schema.prisma`
 npm run db:seed
 ```
 
-Lo script crea un Super Admin con l'email segnaposto `superadmin@example.com`. Per accedere davvero:
+Lo script crea il Super Admin con email, nome e cognome presi da `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_NAME` e `SUPER_ADMIN_SURNAME`. Se una di queste variabili manca, si ferma con un errore. Si può rilanciare senza problemi:
+- se c'è già un Super Admin con un'email segnaposto, ad esempio `superadmin@example.com` dei dati di prova, gli dà email, nome e cognome indicati;
+- se c'è già un Super Admin con un'altra email, non lo modifica e non ne crea un secondo;
+- se l'email appartiene già a un altro utente, si ferma senza modificare niente.
 
-1. Cambia l'email in `prisma/seed.ts` prima di lanciarlo.
+Per accedere come Super Admin:
+
+1. Imposta le tre variabili e lancia lo script.
 2. Crea in Firebase un account con la stessa email e confermala. Il modo più semplice è dall'app: scegli *Crea un account* e apri il link che arriva via email. Gli account aggiunti a mano nella console Firebase, in *Authentication*, poi *Users*, nascono non verificati: al primo accesso dall'app si apre la schermata di conferma, tocca *Invia di nuovo* e apri il link.
 
 ### Dati di prova (facoltativo)
