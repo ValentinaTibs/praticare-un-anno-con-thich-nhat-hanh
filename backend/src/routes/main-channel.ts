@@ -44,12 +44,38 @@ const templateFields = {
 } as const;
 
 // Participants never see who wrote a post: the author is only for the panel.
-const appPostFields = { id: true, content: true, publishedAt: true, createdAt: true } as const;
+const appPostFields = {
+  id: true,
+  content: true,
+  publishedAt: true,
+  createdAt: true,
+  sharingChannel: { select: { id: true, status: true, scheduledClosedAt: true } },
+} as const;
+
+type AppPost = {
+  id: string;
+  content: string;
+  publishedAt: Date;
+  createdAt: Date;
+  sharingChannel: { id: string; status: string; scheduledClosedAt: Date | null } | null;
+};
+
+// The announcement of a sharing channel tells the app which channel it opens and
+// whether it is still open, for the way in.
+function toAppPost({ sharingChannel, ...post }: AppPost, now: Date) {
+  const announcement = sharingChannel && {
+    channelId: sharingChannel.id,
+    open: sharingChannel.status === 'open' && (!sharingChannel.scheduledClosedAt || sharingChannel.scheduledClosedAt > now),
+    closesAt: sharingChannel.scheduledClosedAt,
+  };
+  return { ...post, announcement };
+}
 
 const panelPostFields = {
   id: true,
   groupId: true,
   templateId: true,
+  sharingChannelId: true,
   content: true,
   publishedAt: true,
   createdAt: true,
@@ -92,7 +118,7 @@ export async function mainChannelRoutes(app: FastifyInstance) {
       prisma.mainChannelPost.count({ where }),
     ]);
 
-    return reply.send({ posts, total, page, limit });
+    return reply.send({ posts: posts.map((post) => toAppPost(post, now)), total, page, limit });
   });
 
   // GET /api/main-channel/groups/:groupId/posts — admin only, any group, also archived

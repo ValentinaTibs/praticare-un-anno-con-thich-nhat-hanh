@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 import { prisma } from '../config/prisma.js';
 import { pushToChannelMembers, pushToGroup } from './push.service.js';
-import { addMinutes, calendarDateInRome, wallTimeInRome } from '../utils/date.js';
+import { addMinutes, calendarDateInRome, timeInRome, wallTimeInRome, weekdayDayAndMonthInRome } from '../utils/date.js';
 
 type Schedule = { dayOfWeek: number; startTime: string; durationHours: number };
 
@@ -28,6 +28,11 @@ function latestAppointmentStart(schedule: Schedule, now: Date) {
   throw new Error('No weekly appointment in the last 8 days');
 }
 
+// Still true once the channel has closed: "Cerchio di sabato 5 gennaio, dalle 9:00 alle 10:00".
+function announcementText(opensAt: Date, closesAt: Date) {
+  return `Cerchio di ${weekdayDayAndMonthInRome(opensAt)}, dalle ${timeInRome(opensAt)} alle ${timeInRome(closesAt)}`;
+}
+
 async function openDueChannels(now: Date) {
   const schedule = await prisma.sharingChannelSchedule.findUnique({ where: { id: 1 } });
   if (!schedule) return;
@@ -48,10 +53,24 @@ async function openDueChannels(now: Date) {
   });
 
   for (const group of groups) {
-    // The unique (group, opening time) pair keeps this appointment from opening twice.
-    const [channel] = await prisma.sharingChannel.createManyAndReturn({
-      data: [{ groupId: group.id, status: 'open', openedAt: opensAt, scheduledClosedAt: closesAt }],
-      skipDuplicates: true,
+    const channel = await prisma.$transaction(async (tx) => {
+      // The unique (group, opening time) pair keeps this appointment from opening twice.
+      const [opened] = await tx.sharingChannel.createManyAndReturn({
+        data: [{ groupId: group.id, status: 'open', openedAt: opensAt, scheduledClosedAt: closesAt }],
+        skipDuplicates: true,
+      });
+      if (!opened) return null;
+      // The way in, in the group's Main Channel: a post of this group only, without
+      // template and without the Main Channel push. It stays after the channel closes.
+      await tx.mainChannelPost.create({
+        data: {
+          groupId: group.id,
+          sharingChannelId: opened.id,
+          content: announcementText(opensAt, closesAt),
+          publishedAt: opensAt,
+        },
+      });
+      return opened;
     });
     if (!channel) continue;
 

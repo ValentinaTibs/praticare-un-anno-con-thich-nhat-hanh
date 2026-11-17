@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fcm } from '../src/config/firebase.js';
 import { createTestApp, givenAdmin, givenMember, givenGroup, givenUser, loginAs } from './helpers.js';
 import { runSharingChannelTick } from '../src/services/sharing-channel.service.js';
+import { runMainChannelTick } from '../src/services/main-channel.service.js';
+import { prisma } from '../src/config/prisma.js';
 
 type App = Awaited<ReturnType<typeof createTestApp>>;
 type Headers = { authorization: string };
@@ -16,6 +18,8 @@ const readStatus = (app: App, headers: Headers) =>
   app.inject({ method: 'GET', url: '/api/sharing-channel/status', headers });
 const join = (app: App, headers: Headers) =>
   app.inject({ method: 'POST', url: '/api/sharing-channel/join', headers });
+const readMainChannel = (app: App, headers: Headers) =>
+  app.inject({ method: 'GET', url: '/api/main-channel/posts', headers });
 const registerDevice =(app: App, headers: Headers, fcmToken: string) =>
   app.inject({ method: 'POST', url: '/api/auth/devices', headers, payload: { fcmToken } });
 
@@ -225,5 +229,87 @@ describe('Cambio di programmazione', () => {
       status: 'open',
       scheduledClosedAt: '2030-01-05T10:00:00.000Z',
     });
+  });
+});
+
+describe('Annuncio del cerchio nel Canale Principale', () => {
+  it('all\'apertura compare nel Canale Principale del gruppo il post di annuncio, con l\'ingresso al cerchio', async () => {
+    const app = await createTestApp();
+    await saveSchedule(app, await loginAs(app, await givenAdmin()), saturdayAtNine);
+    const member = await loginAs(app, await givenMember(await givenGroup()));
+
+    await runSharingChannelTick(new Date('2030-01-05T08:00:00.000Z'));
+
+    const { channelId } = (await readStatus(app, member)).json();
+    expect((await readMainChannel(app, member)).json().posts).toMatchObject([
+      {
+        content: 'Cerchio di sabato 5 gennaio, dalle 9:00 alle 10:00',
+        publishedAt: '2030-01-05T08:00:00.000Z',
+        announcement: { channelId, open: true, closesAt: '2030-01-05T09:00:00.000Z' },
+      },
+    ]);
+  });
+
+  it('ogni gruppo riceve un solo annuncio, anche se il job gira due volte', async () => {
+    const app = await createTestApp();
+    await saveSchedule(app, await loginAs(app, await givenAdmin()), saturdayAtNine);
+    const first = await loginAs(app, await givenMember(await givenGroup()));
+    const second = await loginAs(app, await givenMember(await givenGroup()));
+
+    await runSharingChannelTick(new Date('2030-01-05T08:00:00.000Z'));
+    await runSharingChannelTick(new Date('2030-01-05T08:01:00.000Z'));
+
+    const firstPosts = (await readMainChannel(app, first)).json().posts;
+    const secondPosts = (await readMainChannel(app, second)).json().posts;
+    expect(firstPosts).toHaveLength(1);
+    expect(secondPosts).toHaveLength(1);
+    expect(firstPosts[0].announcement.channelId).not.toBe(secondPosts[0].announcement.channelId);
+  });
+
+  it('l\'annuncio non manda la push «Canale Principale»', async () => {
+    const app = await createTestApp();
+    await saveSchedule(app, await loginAs(app, await givenAdmin()), saturdayAtNine);
+    await registerDevice(app, await loginAs(app, await givenMember(await givenGroup())), 'phone-of-member');
+
+    await runSharingChannelTick(new Date('2030-01-05T08:00:00.000Z'));
+
+    const titles = vi
+      .mocked(fcm.sendEachForMulticast)
+      .mock.calls.filter(([message]) => message.tokens.includes('phone-of-member'))
+      .map(([message]) => message.notification?.title);
+    expect(titles).not.toContain('Canale Principale');
+    expect(pushesReceivedBy('phone-of-member')).toEqual(['Il cerchio è aperto']);
+  });
+
+  it('dopo la chiusura l\'annuncio resta, con il cerchio chiuso', async () => {
+    const app = await createTestApp();
+    await saveSchedule(app, await loginAs(app, await givenAdmin()), saturdayAtNine);
+    const member = await loginAs(app, await givenMember(await givenGroup()));
+    await runSharingChannelTick(new Date('2030-01-05T08:00:00.000Z'));
+
+    await runSharingChannelTick(new Date('2030-01-05T09:00:00.000Z'));
+
+    expect((await readMainChannel(app, member)).json().posts).toMatchObject([
+      { content: 'Cerchio di sabato 5 gennaio, dalle 9:00 alle 10:00', announcement: { open: false } },
+    ]);
+  });
+
+  it('i post della sequenza non sono annunci', async () => {
+    const app = await createTestApp();
+    const admin = await loginAs(app, await givenAdmin());
+    const group = await givenGroup();
+    const member = await loginAs(app, await givenMember(group));
+    await app.inject({
+      method: 'POST',
+      url: '/api/main-channel/templates',
+      headers: admin,
+      payload: { content: 'Benvenuti', journeyDay: 1, publishTime: '00:00', status: 'scheduled' },
+    });
+    // In the sequence since long before the group's first day
+    await prisma.mainChannelTemplate.updateMany({ data: { sequencedAt: new Date(0) } });
+
+    await runMainChannelTick(new Date());
+
+    expect((await readMainChannel(app, member)).json().posts).toMatchObject([{ content: 'Benvenuti', announcement: null }]);
   });
 });

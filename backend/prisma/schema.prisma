@@ -134,20 +134,23 @@ model MainChannelPublication {
 }
 
 // A post published in a group's Main Channel. It is born at publication, as a copy
-// of a template or without one, and then lives on its own.
+// of a template or without one, and then lives on its own. The announcement of a
+// sharing channel is a post without template, linked to the channel it opens.
 model MainChannelPost {
-  id          String   @id @default(uuid())
-  groupId     String   @map("group_id")
-  templateId  String?  @map("template_id")
-  authorId    String?  @map("author_id")
-  content     String
-  publishedAt DateTime @map("published_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  groupId          String   @map("group_id")
+  templateId       String?  @map("template_id")
+  sharingChannelId String?  @unique @map("sharing_channel_id")
+  authorId         String?  @map("author_id")
+  content          String
+  publishedAt      DateTime @map("published_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  group    Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  template MainChannelTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  author   User?                @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  group          Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  template       MainChannelTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sharingChannel SharingChannel?      @relation(fields: [sharingChannelId], references: [id], onDelete: SetNull)
+  author         User?                @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([groupId, publishedAt])
   @@index([templateId])
@@ -166,8 +169,9 @@ model SharingChannel {
 
   group   Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
   opener  User?                  @relation(fields: [openedBy], references: [id])
-  members SharingChannelMember[]
-  posts   SharingChannelPost[]
+  members      SharingChannelMember[]
+  posts        SharingChannelPost[]
+  announcement MainChannelPost?
 
   @@unique([groupId, openedAt])
   @@map("sharing_channel")
@@ -186,11 +190,15 @@ model SharingChannelSchedule {
   @@map("sharing_channel_schedule")
 }
 
+// Whoever entered the channel. Leaving keeps the row, so the channel knows how many
+// people took part and who comes back: back in, they see only the messages from then.
 model SharingChannelMember {
-  id               String   @id @default(uuid())
-  sharingChannelId String   @map("sharing_channel_id")
-  userId           String   @map("user_id")
-  joinedAt         DateTime @default(now()) @map("joined_at")
+  id               String    @id @default(uuid())
+  sharingChannelId String    @map("sharing_channel_id")
+  userId           String    @map("user_id")
+  joinedAt         DateTime  @default(now()) @map("joined_at")
+  leftAt           DateTime? @map("left_at")
+  rejoinedAt       DateTime? @map("rejoined_at")
 
   sharingChannel SharingChannel @relation(fields: [sharingChannelId], references: [id], onDelete: Cascade)
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -204,7 +212,6 @@ model SharingChannelPost {
   sharingChannelId String   @map("sharing_channel_id")
   authorId         String   @map("author_id")
   content          String
-  mediaUrl         String?  @map("media_url")
   createdAt        DateTime @default(now()) @map("created_at")
 
   sharingChannel SharingChannel @relation(fields: [sharingChannelId], references: [id], onDelete: Cascade)

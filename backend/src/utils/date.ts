@@ -78,3 +78,22 @@ const ROME_DAY_AND_MONTH = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/
 export function dayAndMonthInRome(instant: Date): string {
   return ROME_DAY_AND_MONTH.format(instant);
 }
+
+const ROME_WEEKDAY_DAY_AND_MONTH = new Intl.DateTimeFormat('it-IT', {
+  timeZone: 'Europe/Rome',
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
+
+// The weekday, day and month in Italy at this instant, in Italian: "sabato 5 gennaio".
+export function weekdayDayAndMonthInRome(instant: Date): string {
+  return ROME_WEEKDAY_DAY_AND_MONTH.format(instant);
+}
+
+const ROME_TIME = new Intl.DateTimeFormat('it-IT', { timeZone: 'Europe/Rome', hour: 'numeric', minute: '2-digit' });
+
+// The time in Italy at this instant, as written in Italian: "9:00".
+export function timeInRome(instant: Date): string {
+  return ROME_TIME.format(instant);
+}

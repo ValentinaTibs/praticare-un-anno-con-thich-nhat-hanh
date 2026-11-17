@@ -75,7 +75,8 @@ export async function pushToChannelMembers(channelId: string, title: string, bod
     where: {
       user: {
         status: 'active',
-        sharingChannelSession: { some: { sharingChannelId: channelId } },
+        // Who is in the channel now: not those who left.
+        sharingChannelSession: { some: { sharingChannelId: channelId, leftAt: null } },
       },
     },
     select: { fcmToken: true },
