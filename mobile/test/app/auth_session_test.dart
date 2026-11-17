@@ -20,12 +20,10 @@ void main() {
   setUpAll(initItalianLocale);
 
   late FakeTokenStorage storage;
-  late FakeSocket socket;
   late FakePush push;
 
   setUp(() {
     storage = FakeTokenStorage(access: 'old-access', refresh: 'old-refresh');
-    socket = FakeSocket();
     push = FakePush();
   });
 
@@ -40,7 +38,6 @@ void main() {
     final container = ProviderContainer(overrides: [
       httpAdapterProvider.overrideWithValue(http),
       tokenStorageProvider.overrideWithValue(storage),
-      socketServiceProvider.overrideWithValue(socket),
       pushServiceProvider.overrideWithValue(push),
     ]);
     addTearDown(container.dispose);
@@ -73,14 +70,12 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expectSignedOut(container, sessionExpiredMessage);
-      expect(socket.disconnected, 1);
     });
 
     test('all\'avvio con il refresh token rifiutato mostra l\'accesso con il messaggio', () async {
       final container = await started(backend({_me: _unauthorized, _refresh: _sessionRefused}));
 
       expectSignedOut(container, sessionExpiredMessage);
-      expect(socket.connected, isEmpty);
     });
 
     test('un utente sospeso prima dell\'avvio vede il motivo, e il suo token è revocato', () async {
@@ -129,7 +124,7 @@ void main() {
       await container.read(authProvider.notifier).retry();
 
       expect(container.read(authProvider).status, AuthStatus.authenticated);
-      expect(socket.connected, ['old-access']);
+      expect(storage.access, 'old-access');
     });
 
     testWidgets('mostra «Riprova» e «Esci», che porta all\'accesso e cancella la sessione', (tester) async {
@@ -151,7 +146,7 @@ void main() {
   });
 
   group('avvio con sessione valida', () {
-    test('il socket usa il token rinnovato, non quello scaduto', () async {
+    test('con il token d\'accesso scaduto la sessione si rinnova e tiene i nuovi token', () async {
       final container = await started(backend({
         _me: (RequestOptions r) =>
             r.headers['Authorization'] == 'Bearer new-access' ? (200, userJson('user')) : _unauthorized,
@@ -159,7 +154,8 @@ void main() {
       }));
 
       expect(container.read(authProvider).status, AuthStatus.authenticated);
-      expect(socket.connected, ['new-access']);
+      expect(storage.access, 'new-access');
+      expect(storage.refresh, 'new-refresh');
     });
 
     test('un problema con le notifiche non chiude la sessione', () async {

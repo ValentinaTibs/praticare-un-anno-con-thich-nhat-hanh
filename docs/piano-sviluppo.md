@@ -9,7 +9,7 @@
 - Il backend esistente è piccolo e ben impostato, ma va esteso parecchio: i **gruppi** toccano quasi tutte le funzionalità.
 - Il **pannello web** va costruito da zero.
 - L'**utente in attesa** sostituisce la lista d'attesa e toglie l'invio di email dalla prima release. Il lavoro nuovo è la **frase del giorno**: due elenchi di frasi, import da CSV e un job giornaliero.
-- L'**app mobile** e il backend usano già lo stesso accesso, con email e password tramite Firebase. Nell'app resta da eliminare il vecchio codice di Socket.IO.
+- L'**app mobile** e il backend usano già lo stesso accesso, con email e password tramite Firebase.
 - Il vincolo più rigido è esterno: gli **store**. Per stare tranquilli l'app va inviata in revisione entro **venerdì 11 dicembre**, prima del rallentamento natalizio delle revisioni Apple.
 
 ## Calendario
@@ -47,7 +47,7 @@ Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipend
 ### Fase 1 — Fondamenta (settimane 1–2)
 Va fatta per prima, perché tutto il resto dipende da qui.
 
-- **Riallineare l'accesso.** Fatto: l'app accede con email e password tramite Firebase e invia il token al backend. Resta da eliminare il vecchio codice di Socket.IO dall'app.
+- **Riallineare l'accesso.** Fatto: l'app accede con email e password tramite Firebase e invia il token al backend. Il vecchio codice di Socket.IO è stato eliminato.
 - **Cicli.** Il Super Admin imposta data di chiusura delle richieste, data di inizio e durata del percorso. Il ciclo si chiude da solo e date e durata si possono modificare fino all'inizio. Nessun annullamento del ciclo nella prima release.
 - **Utente in attesa.** Fatto: la registrazione è sempre aperta e crea un utente senza gruppo e non revisionato. Resta da fare: mentre il ciclo è aperto l'utente chiede di partecipare o annulla la richiesta. Gli utenti in attesa vedono quanti sono i richiedenti.
 - **Gruppi.** Il gruppo nasce alla data di inizio con i richiedenti revisionati, e finisce dopo la durata impostata riportando i membri in attesa.
@@ -121,4 +121,4 @@ La cancellazione dell'account **non può slittare**, perché gli store la richie
 
 ## Prossimi passi
 1. Il gruppo crea la mail di progetto, sceglie il referente, apre gli account store e attiva l'abbonamento Hobby di Railway.
-2. Si parte con la fase 1: modello dati dei gruppi ed eliminazione di Socket.IO dall'app.
+2. Si parte con la fase 1: modello dati dei gruppi.

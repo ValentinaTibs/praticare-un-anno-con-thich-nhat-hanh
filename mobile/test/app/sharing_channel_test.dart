@@ -42,7 +42,6 @@ Future<({ProviderContainer container, FakeHttp http})> openCircle(WidgetTester t
   final container = ProviderContainer(overrides: [
     httpAdapterProvider.overrideWithValue(http),
     tokenStorageProvider.overrideWithValue(FakeTokenStorage(access: 'a', refresh: 'r')),
-    socketServiceProvider.overrideWithValue(FakeSocket()),
     pushServiceProvider.overrideWithValue(FakePush()),
   ]);
   addTearDown(container.dispose);
@@ -121,6 +120,28 @@ void main() {
     await tester.pump(SharingChannelNotifier.refreshInterval * 3);
 
     expect(app.http.calls(_status), calls);
+    await closeApp(tester, app);
+  });
+
+  testWidgets('a meno di 15 minuti dalla chiusura avvisa quanto manca', (tester) async {
+    final closesAt = DateTime.now().toUtc().add(const Duration(minutes: 10));
+    final app = await openCircle(tester, {
+      _status: (200, {..._openJoined, 'scheduledClosedAt': closesAt.toIso8601String()}),
+      _posts: (200, <Object>[]),
+    });
+
+    expect(find.text('Chiude tra 10 minuti'), findsOneWidget);
+    await closeApp(tester, app);
+  });
+
+  testWidgets('lontano dalla chiusura non avvisa', (tester) async {
+    final closesAt = DateTime.now().toUtc().add(const Duration(minutes: 40));
+    final app = await openCircle(tester, {
+      _status: (200, {..._openJoined, 'scheduledClosedAt': closesAt.toIso8601String()}),
+      _posts: (200, <Object>[]),
+    });
+
+    expect(find.textContaining('Chiude tra'), findsNothing);
     await closeApp(tester, app);
   });
 }

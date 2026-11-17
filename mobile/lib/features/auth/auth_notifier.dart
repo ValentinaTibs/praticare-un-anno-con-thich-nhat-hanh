@@ -6,7 +6,6 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_errors.dart';
 import '../../core/models/user.dart';
 import '../../core/services/push_service.dart';
-import '../../core/services/socket_service.dart';
 import '../../core/storage/token_storage.dart';
 
 export '../../core/auth/auth_errors.dart';
@@ -44,10 +43,9 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final ApiClient _api;
   final TokenStorage _storage;
-  final SocketService _socket;
   final PushService _push;
 
-  AuthNotifier(this._api, this._storage, this._socket, this._push) : super(const AuthState.loading()) {
+  AuthNotifier(this._api, this._storage, this._push) : super(const AuthState.loading()) {
     _restoreSession();
   }
 
@@ -91,9 +89,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return;
     }
-    // Read only now: the request above may have refreshed the token.
-    final token = await _storage.getAccessToken();
-    if (token != null) _socket.connect(token);
     try {
       await _push.init();
     } catch (_) {
@@ -197,7 +192,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       refresh: result['refreshToken'] as String,
     );
     final user = User.fromJson(result['user'] as Map<String, dynamic>);
-    _socket.connect(result['accessToken'] as String);
     await _push.init();
     state = AuthState.authed(user);
   }
@@ -207,7 +201,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// The backend refused the refresh token and the tokens are gone.
   void sessionExpired() {
     if (state.status == AuthStatus.unauthenticated) return;
-    _socket.disconnect();
     signOutFirebase();
     state = AuthState.err(sessionExpiredMessage);
   }
@@ -225,7 +218,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _api.post('/api/auth/logout', data: {'refreshToken': refreshToken});
       } catch (_) {}
     }
-    _socket.disconnect();
     await signOutFirebase();
     await _storage.clear();
     state = error == null ? const AuthState.unauth() : AuthState.err(error);
@@ -257,7 +249,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 // ── Providers ──────────────────────────────────────────────────────────────────
 
 final tokenStorageProvider = Provider<TokenStorage>((_) => TokenStorage());
-final socketServiceProvider = Provider<SocketService>((_) => SocketService());
 
 /// The HTTP transport of the app, replaced in tests.
 final httpAdapterProvider = Provider<HttpClientAdapter?>((_) => null);
@@ -273,6 +264,5 @@ final StateNotifierProvider<AuthNotifier, AuthState> authProvider =
     StateNotifierProvider<AuthNotifier, AuthState>((ref) => AuthNotifier(
       ref.watch(apiClientProvider),
       ref.watch(tokenStorageProvider),
-      ref.watch(socketServiceProvider),
       ref.watch(pushServiceProvider),
     ));

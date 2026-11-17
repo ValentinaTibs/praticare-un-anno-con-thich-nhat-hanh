@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/main_channel_post.dart';
-import '../../core/services/socket_service.dart';
 import '../auth/auth_notifier.dart';
 
 class MainChannelState {
@@ -29,12 +27,9 @@ class MainChannelState {
 
 class MainChannelNotifier extends StateNotifier<MainChannelState> {
   final ApiClient _api;
-  final SocketService _socket;
-  StreamSubscription? _sub;
   int _page = 1;
 
-  MainChannelNotifier(this._api, this._socket) : super(const MainChannelState()) {
-    _sub = _socket.onNewMainPost.listen(_onNewPost);
+  MainChannelNotifier(this._api) : super(const MainChannelState()) {
     load();
   }
 
@@ -44,6 +39,7 @@ class MainChannelNotifier extends StateNotifier<MainChannelState> {
     state = state.copyWith(loading: true);
     try {
       final data = await _api.get('/api/main-channel/posts', query: {'page': '$_page', 'limit': '20'});
+      if (!mounted) return;
       final d = data as Map<String, dynamic>;
       final incoming = (d['posts'] as List).map((e) => MainChannelPost.fromJson(e as Map<String, dynamic>)).toList();
       final posts = refresh ? incoming : [...state.posts, ...incoming];
@@ -51,23 +47,15 @@ class MainChannelNotifier extends StateNotifier<MainChannelState> {
       state = state.copyWith(posts: posts, loading: false, hasMore: posts.length < total);
       _page++;
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(loading: false, error: e.toString());
     }
   }
 
-  void _onNewPost(MainChannelPost post) {
-    // Prepend new real-time post if not already present
-    if (state.posts.any((p) => p.id == post.id)) return;
-    state = state.copyWith(posts: [post, ...state.posts]);
-  }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
-  }
 }
 
-final mainChannelProvider = StateNotifierProvider<MainChannelNotifier, MainChannelState>((ref) {
-  return MainChannelNotifier(ref.watch(apiClientProvider), ref.watch(socketServiceProvider));
+// The backend sends no live updates: the posts are read again each time the screen opens,
+// when the app comes back to the foreground, and on pull to refresh.
+final mainChannelProvider = StateNotifierProvider.autoDispose<MainChannelNotifier, MainChannelState>((ref) {
+  return MainChannelNotifier(ref.watch(apiClientProvider));
 });

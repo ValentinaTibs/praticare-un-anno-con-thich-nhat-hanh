@@ -10,6 +10,7 @@ import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/signup_screen.dart';
 import 'features/auth/screens/verify_email_screen.dart';
 import 'features/main_channel/screens/main_channel_screen.dart';
+import 'features/main_channel/main_channel_notifier.dart';
 import 'features/sharing_channel/screens/sharing_channel_screen.dart';
 import 'features/waiting/next_journey.dart';
 import 'features/waiting/screens/waiting_screen.dart';
@@ -105,10 +106,12 @@ class _HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<_HomeShell> {
-  // A group may have started or ended while the app was in the background.
+  // A group may have started or ended while the app was in the background, and new
+  // Main Channel posts may have been published.
   late final _lifecycle = AppLifecycleListener(onResume: () {
     ref.read(authProvider.notifier).refreshUser();
     ref.invalidate(nextJourneyProvider);
+    ref.invalidate(mainChannelProvider);
   });
 
   @override

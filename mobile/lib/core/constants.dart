@@ -6,6 +6,4 @@ class AppConstants {
     'API_URL',
     defaultValue: 'http://10.0.2.2:3000', // Android emulator → localhost
   );
-
-  static const String socketUrl = baseUrl;
 }

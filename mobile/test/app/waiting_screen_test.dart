@@ -43,7 +43,6 @@ Future<FakeHttp> pumpApp(WidgetTester tester, Map<String, Object> routes) async 
   final container = ProviderContainer(overrides: [
     httpAdapterProvider.overrideWithValue(http),
     tokenStorageProvider.overrideWithValue(FakeTokenStorage(access: 'a', refresh: 'r')),
-    socketServiceProvider.overrideWithValue(FakeSocket()),
     pushServiceProvider.overrideWithValue(FakePush()),
   ]);
   addTearDown(container.dispose);

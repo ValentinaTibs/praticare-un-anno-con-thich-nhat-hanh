@@ -26,7 +26,7 @@
 - **Backend:** Node.js + TypeScript, Fastify v4, Zod per la validazione
 - **Database:** PostgreSQL tramite Prisma
 - **Autenticazione:** email e password tramite Firebase Authentication. L'email deve essere verificata. Il backend verifica il token Firebase ed emette i propri JWT (access 15 min, refresh 30 giorni). Firebase invia anche le email di verifica e di reimpostazione della password
-- **Notifiche push e tempo reale:** Firebase Cloud Messaging, più dispositivi per utente
+- **Notifiche push:** Firebase Cloud Messaging, più dispositivi per utente. Non ci sono connessioni in tempo reale: nell'app il cerchio si ricarica ogni 10 secondi e il Canale Principale a ogni apertura
 - **Email:** nella prima release il backend non invia email. Le uniche email sono quelle di accesso, che invia Firebase
 - **Pannello admin:** Flutter Web
 - **Job pianificati:** node-cron
@@ -369,7 +369,6 @@ La **cancellazione autonoma dell'account non può slittare**. Apple chiede che l
 - **Già allineato:** l'accesso al pannello web usa email e password tramite Firebase ed è riservato ad admin e Super Admin. Le voci del Super Admin si vedono solo con quel ruolo.
 - **Messaggio per i sospesi:** il codice mostra un testo fisso in inglese senza email di contatto. Il messaggio per i bannati è anch'esso fisso.
 - **Messaggio per registrazione a ciclo chiuso:** il codice restituisce un testo fisso.
-- **Socket.IO nell'app mobile:** l'accesso è allineato, perché app e backend usano Firebase con email e password. L'app contiene però ancora il vecchio codice di Socket.IO, mentre il backend usa solo Firebase Cloud Messaging.
 - **Gruppi:** il codice lega già utenti e cerchio al gruppo, ma round di conferma e Canale Principale sono ancora unici per tutti.
 - **Utente in attesa:** la registrazione è sempre aperta e crea un utente in attesa, senza gruppo e non revisionato. App e pannello gestiscono richieste di partecipazione, annullamento, conteggio ed elenco dei richiedenti. Nella schermata "In attesa" manca la frase del giorno (#83), e a ciclo chiuso il messaggio è ancora un testo fisso (#34).
 - **Già allineato:** il gruppo finisce da solo alla fine della durata, anche se il server era spento, e i membri tornano in attesa. Il cerchio rimasto aperto si chiude e gli ex membri non possono più entrarci. Il pannello mostra il gruppo tra quelli archiviati, con gli ex membri che non sono entrati in un percorso successivo: non c'è uno storico delle appartenenze.
