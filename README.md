@@ -4,6 +4,8 @@ App per i partecipanti di un percorso di pratica della community "La via della t
 
 - Specifiche di progetto: [docs/specifiche-progetto.md](docs/specifiche-progetto.md)
 - Piano di sviluppo: [docs/piano-sviluppo.md](docs/piano-sviluppo.md)
+- Glossario dei termini del dominio: [docs/glossario.md](docs/glossario.md)
+- Stile grafico dell'app mobile: [docs/design-lanterna.md](docs/design-lanterna.md)
 - Lavoro in corso: [issue su GitHub](https://github.com/ValentinaTibs/praticare-un-anno-con-thich-nhat-hanh/issues), raggruppate per fase nelle milestone
 
 > **Stato attuale.** Il progetto è in sviluppo e non è ancora utilizzabile dall'inizio alla fine. I problemi noti sono [su GitHub con l'etichetta bug](https://github.com/ValentinaTibs/praticare-un-anno-con-thich-nhat-hanh/issues?q=is%3Aissue+is%3Aopen+label%3Abug).
@@ -14,14 +16,14 @@ App per i partecipanti di un percorso di pratica della community "La via della t
 |---|---|
 | `backend/` | Server Node.js e TypeScript con Fastify, Prisma e PostgreSQL |
 | `mobile/` | App Flutter per i partecipanti e pannello web di amministrazione (`lib/panel/`) |
-| `docs/` | Specifiche e piano di sviluppo |
+| `docs/` | Specifiche, piano di sviluppo, glossario e stile grafico |
 
 ## Requisiti
 
 - **Node.js** 20.6 o successivo. Serve il supporto all'opzione `--env-file`.
-- **PostgreSQL** 14 o successivo. In alternativa, **Docker** per avviarlo in un container.
+- **PostgreSQL**: per lo sviluppo non serve installarlo, lo avvia `npm run db:start`. In alternativa PostgreSQL 14 o successivo, oppure **Docker**.
 - **Flutter** con Dart 3.3 o successivo.
-- Un **progetto Firebase** con accesso tramite email e password e Cloud Messaging attivi. Va chiesto al referente del progetto.
+- L'accesso al **progetto Firebase** di prova, `la-via-trasformazione-prova`, con accesso tramite email e password e Cloud Messaging attivi. Chiavi e file di configurazione si chiedono a chi gestisce gli account del progetto, che li custodisce in Bitwarden.
 - Per iOS: un Mac con Xcode.
 
 ## Backend
@@ -37,11 +39,19 @@ npm install
 
 ### 2. Avviare PostgreSQL
 
-Se PostgreSQL è già installato, crea un database chiamato `community_app`. Altrimenti avvialo con Docker:
+Il modo più semplice è il database di sviluppo incluso nel progetto, che non richiede né un'installazione né Docker:
+
+```bash
+npm run db:start
+```
+
+Resta in esecuzione finché non premi Ctrl+C, quindi lancialo in un terminale a parte. I dati restano nella cartella `backend/.dev-db` anche dopo averlo fermato.
+
+In alternativa, con PostgreSQL già installato crea un database chiamato `community_app`, oppure avvialo con Docker:
 
 ```bash
 docker run -d --name community-db \
-  -e POSTGRES_USER=community -e POSTGRES_PASSWORD=community -e POSTGRES_DB=community_app \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=community_app \
   -p 5432:5432 postgres:16
 ```
 
@@ -55,10 +65,10 @@ Poi modifica `.env`:
 
 | Variabile | Cosa inserire |
 |---|---|
-| `DATABASE_URL` | Indirizzo del database. Con il container Docker: `postgresql://community:community@localhost:5432/community_app` |
+| `DATABASE_URL` | Indirizzo del database. Con `npm run db:start` o con il container Docker va bene il valore di `.env.example` |
 | `JWT_SECRET` | Una stringa casuale di almeno 32 caratteri, ad esempio generata con `openssl rand -hex 32` |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | La chiave di servizio Firebase su una sola riga. Obbligatoria solo in produzione. Vedi sotto |
-| `ADMIN_CONTACT_EMAIL` | L'email di contatto mostrata agli utenti bloccati |
+| `ADMIN_CONTACT_EMAIL` | L'email di contatto mostrata agli utenti sospesi e bannati. Negli ambienti online è la mail di progetto, tech@laviadellatrasformazione.it |
 | `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_NAME`, `SUPER_ADMIN_SURNAME` | Email, nome e cognome del Super Admin, usati da `npm run db:seed`. L'email deve essere una casella vera: serve per accedere |
 
 Le altre variabili hanno già valori adatti allo sviluppo.
@@ -145,7 +155,27 @@ Il server legge le variabili dal file `.env`, risponde su `http://localhost:3000
 | `npm run db:studio` | Apre Prisma Studio per consultare il database dal browser |
 | `npm test` | Esegue i test su un database PostgreSQL temporaneo, senza bisogno del file `.env` |
 | `npm run typecheck` | Controlla i tipi di codice, test, script di installazione e configurazione dei test |
+| `npm run lint` | Controlla il codice con ESLint |
 | `npm run build` | Controlla i tipi e compila per la produzione nella cartella `dist/` |
+
+## Ambienti online
+
+Backend e database stanno su **Railway**, nella regione EU West, nel progetto `la-via-della-trasformazione`. Ci sono due ambienti, ognuno con il proprio backend e il proprio database PostgreSQL:
+
+| Ambiente | Indirizzo del backend | Aggiornamento | Progetto Firebase |
+|---|---|---|---|
+| `prova` | https://backend-prova.up.railway.app | Automatico a ogni push su `main` | `la-via-trasformazione-prova` |
+| `production` | https://backend-production-e4888ae3.up.railway.app | Solo a mano, dalla console di Railway | `la-via-della-trasformazione` |
+
+Prima di ogni rilascio Railway applica le migrazioni con `npx prisma migrate deploy`. Lo stato del servizio si controlla su `/health`.
+
+Le variabili d'ambiente, segreti compresi, si impostano nella console di Railway o con la CLI, ad esempio:
+
+```bash
+railway variables --service backend --environment prova --set NOME=valore
+```
+
+Ogni modifica a una variabile fa ripartire il backend di quell'ambiente. Le credenziali di produzione le conoscono solo due persone del gruppo: chi sviluppa usa quelle di prova.
 
 ## App mobile
 
@@ -155,9 +185,11 @@ L'app esce solo per Android e iOS. L'identificativo, uguale sulle due piattaform
 
 ### 1. Configurazione Firebase
 
-Firebase serve per l'accesso con email e password e per le notifiche push. Finché il progetto Firebase non esiste, l'app si avvia lo stesso, ma senza accesso e senza notifiche push.
+Firebase serve per l'accesso con email e password e per le notifiche push.
 
-La configurazione si genera con `flutterfire configure`. I file che produce (`lib/firebase_options.dart`, `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`) contengono le chiavi Firebase: git li ignora e non vanno mai aggiunti al repository, che è pubblico.
+La configurazione si genera con `flutterfire configure`, oppure si chiede a chi gestisce gli account del progetto. I file che produce (`lib/firebase_options.dart`, `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`) contengono le chiavi Firebase: git li ignora e non vanno mai aggiunti al repository, che è pubblico. Senza `lib/firebase_options.dart` l'app non compila.
+
+Se Firebase non riesce a partire, l'app si avvia lo stesso, ma senza accesso e senza notifiche push.
 
 ### 2. Installare le dipendenze
 
@@ -190,7 +222,7 @@ Si entra con l'email e la password dell'app. L'accesso è riservato agli utenti 
 
 ### 1. Configurazione
 
-La configurazione Firebase per il web e l'indirizzo del backend stanno in un file JSON per ambiente, in `mobile/config/`. Il file contiene le chiavi Firebase, quindi git lo ignora e non va mai aggiunto al repository. Si chiede al referente del progetto, oppure si rigenera con la CLI di Firebase:
+La configurazione Firebase per il web e l'indirizzo del backend stanno in un file JSON per ambiente, in `mobile/config/`. Il file contiene le chiavi Firebase, quindi git lo ignora e non va mai aggiunto al repository. Si chiede a chi gestisce gli account del progetto, oppure si rigenera con la CLI di Firebase:
 
 ```bash
 firebase apps:sdkconfig WEB <id-app-web> --project la-via-trasformazione-prova
