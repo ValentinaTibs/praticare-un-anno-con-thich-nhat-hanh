@@ -17,7 +17,7 @@
 | Settimana | Date | Backend | App mobile | Pannello web | Gruppo di progetto |
 |---|---|---|---|---|---|
 | 1 | 19–25 ott | Modello dati con gruppi | Accesso con Firebase | — | Apre gli account store e sceglie l'hosting |
-| 2 | 26 ott–1 nov | Cicli con data di inizio, utente in attesa, richieste di partecipazione | Registrazione e schermata "In attesa" | — | Crea la casella admin@, inizia a raccogliere le frasi in CSV |
+| 2 | 26 ott–1 nov | Cicli con data di inizio, utente in attesa, richieste di partecipazione | Registrazione e schermata "In attesa" | — | Inizia a raccogliere le frasi in CSV |
 | 3 | 2–8 nov | Sequenza dei post, conferme, frasi e job della frase del giorno | Canale Principale del gruppo, frase del giorno | Accesso e struttura | Pubblica la pagina privacy sul sito |
 | 4 | 9–15 nov | Cerchio programmato, fine del gruppo | Cerchio e conferme | Utenti, gruppi e utenti in attesa | Prepara i primi post della sequenza |
 | 5 | 16–22 nov | Testi in italiano, cancellazione account | Profilo con interruttore della frase, messaggi di blocco, cancellazione account. **Test chiuso Android con 12 tester entro il 20 nov** | Sequenza dei post, conferme, frasi con import CSV | Carica le frasi nel pannello |
@@ -38,7 +38,7 @@ Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipend
 - **Account Google Play** personale del referente, con verifica dell'identità. Prima della pubblicazione richiede un test chiuso con 12 tester per 14 giorni.
 - **Hosting** per backend e database: scelto **Railway** il 4 novembre, con gli ambienti di prova e di produzione. Resta da attivare l'abbonamento Hobby.
 - **Hosting del pannello web** su **Firebase Hosting**, con un sito nel progetto di prova e uno in quello di produzione. Il dominio personalizzato, ad esempio admin.laviadellatrasformazione.it, si collega più avanti.
-- Casella **admin@laviadellatrasformazione.it**. Non serve un servizio di invio email.
+- Come **email di contatto** per gli utenti bloccati si usa la mail di progetto **tech@laviadellatrasformazione.it**. Non servono una casella admin@ né un servizio di invio email.
 - **Frasi di Thich Nhat Hanh** in due file CSV, frasi dell'anno e frasi del percorso, con la verifica dei diritti d'uso.
 - **Progetto Firebase** con accesso tramite email e password attivo. I modelli delle email di verifica e di reimpostazione della password vanno tradotti in italiano.
 - **Pagina dell'informativa privacy** sul sito laviadellatrasformazione.it.

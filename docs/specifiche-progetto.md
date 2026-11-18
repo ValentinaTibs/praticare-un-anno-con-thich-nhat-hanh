@@ -139,7 +139,7 @@ PARTECIPANTE ──(fine del percorso)──► IN ATTESA
 - Il ban vale per il **singolo indirizzo email**. Chi usa un altro indirizzo, anche un alias della stessa casella come nome+altro@gmail.com, può registrarsi di nuovo.
 
 ### 6.3 Messaggi mostrati agli utenti bloccati
-- L'utente sospeso e l'utente bannato vedono un messaggio dedicato con l'**email di contatto** degli admin, ad esempio admin@laviadellatrasformazione.it.
+- L'utente sospeso e l'utente bannato vedono un messaggio dedicato con l'**email di contatto** degli admin: la mail di progetto tech@laviadellatrasformazione.it.
 - Il **Super Admin** può modificare dal pannello web il testo di questi messaggi e l'email di contatto.
 
 ### 6.4 Passaggi di stato
