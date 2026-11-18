@@ -33,8 +33,8 @@
 Sono a carico del gruppo di progetto, che è informale e non un ente. Non dipendono dallo sviluppo e sono il rischio più grande per la data.
 
 - **Mail di progetto** tech@laviadellatrasformazione.it, usata per registrare tutti gli account, compreso il progetto Firebase.
-- **Referente del progetto**, che intesta gli account store e fa da titolare del trattamento dei dati.
-- **Account Apple Developer** personale del referente. Non serve il numero D-U-N-S.
+- **Referente del progetto**: Stefano Carboni, con Valentina Tibaldo come sostituta. Intesta l'account Google Play e fa da titolare del trattamento dei dati.
+- **Account Apple Developer** individuale di Valentina Tibaldo, con il suo Apple ID personale. Non serve il numero D-U-N-S.
 - **Account Google Play** personale del referente, con verifica dell'identità. Prima della pubblicazione richiede un test chiuso con 12 tester per 14 giorni.
 - **Hosting** per backend e database: scelto **Railway** il 4 novembre, con gli ambienti di prova e di produzione. Resta da attivare l'abbonamento Hobby.
 - **Hosting del pannello web** su **Firebase Hosting**, con un sito nel progetto di prova e uno in quello di produzione. Il dominio personalizzato, ad esempio admin.laviadellatrasformazione.it, si collega più avanti.
@@ -106,7 +106,7 @@ Costruito in Flutter Web, riusando modelli e chiamate dell'app mobile. Si pubbli
 
 | Rischio | Effetto | Contromisura |
 |---|---|---|
-| Account store in ritardo | Non si può inviare l'app in revisione | Scegliere subito il referente e aprire gli account personali |
+| Account store in ritardo | Non si può inviare l'app in revisione | Aprire subito gli account personali |
 | Test chiuso Android in ritardo o con meno di 12 tester | Google non concede la pubblicazione | Trovare i tester ora e avviare il test entro il 20 novembre, anche con una versione incompleta |
 | Rifiuto in revisione | Una o due settimane perse | Inviare entro l'11 dicembre e preparare l'account di prova |
 | Revisioni lente a Natale | Pubblicazione dopo il 26 dicembre | Inviare in anticipo e programmare la pubblicazione per il 26 |
@@ -120,5 +120,5 @@ Se i tempi stringono, si rimanda la modifica dei testi per sospesi, bannati e ci
 La cancellazione dell'account **non può slittare**, perché gli store la richiedono.
 
 ## Prossimi passi
-1. Il gruppo crea la mail di progetto, sceglie il referente, apre gli account store e attiva l'abbonamento Hobby di Railway.
+1. Il gruppo crea la mail di progetto, apre gli account store e attiva l'abbonamento Hobby di Railway.
 2. Si parte con la fase 1: modello dati dei gruppi.

@@ -23,7 +23,7 @@ Il livello di permessi di un utente: utente, admin o Super Admin. Essere in atte
 _Nel codice_: `Role`
 
 **Referente del progetto**:
-La persona fisica del gruppo di progetto che intesta gli account degli store ed è titolare del trattamento dei dati.
+La persona fisica del gruppo di progetto che intesta l'account Google Play ed è titolare del trattamento dei dati. L'account App Store è intestato a un'altra persona del gruppo.
 
 **Gruppo di progetto**:
 Il gruppo informale di persone che realizza e gestisce l'app. Non è un ente.
