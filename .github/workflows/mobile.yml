@@ -43,3 +43,30 @@ jobs:
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - run: flutter build apk --debug
+
+  # Nobody in the group has a Mac: iOS builds run on GitHub's macOS runners.
+  # Unsigned for now, to catch iOS compile errors early. Signing and the
+  # TestFlight upload come with the Apple Developer account (issue #100).
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+          cache: true
+
+      - name: Ricrea la configurazione Firebase
+        env:
+          FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.FIREBASE_OPTIONS_DART_BASE64 }}
+        run: echo "$FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+
+      - run: flutter pub get
+
+      - run: flutter build ios --release --no-codesign
